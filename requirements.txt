@@ -1,0 +1,71 @@
+# =============================================================================
+# JARVIS backend dependencies
+# =============================================================================
+
+# -- core ---------------------------------------------------------------------
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+
+# -- AI -----------------------------------------------------------------------
+anthropic>=0.40.0
+
+# -- system monitoring & control ----------------------------------------------
+psutil>=5.9.0
+
+# -- web search ---------------------------------------------------------------
+ddgs>=9.0.0
+
+# -- tests --------------------------------------------------------------------
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# =============================================================================
+# Optional. JARVIS runs without every one of these and says so in the UI
+# rather than failing.
+# =============================================================================
+
+# Server-side speech. Without them, the browser's own speech engine is used.
+# 7.3.1 or newer: Microsoft started refusing the handshake from older
+# clients with a 403, which silently broke the server voice.
+edge-tts>=7.3.1            # text-to-speech (much better voices)
+faster-whisper>=1.0.0      # speech-to-text (better recognition)
+
+# -- wake word -------------------------------------------------------------
+# A real local keyword spotter. The browser's Web Speech API is a dictation
+# engine: it uploads audio, returns "Travis" for "Jarvis", and stops itself
+# after a minute. These three run a pretrained spotter on 80 ms frames
+# entirely offline, at roughly 2.6% of one core.
+openwakeword>=0.6.0        # pretrained "hey jarvis" keyword model
+onnxruntime>=1.15.0        # runs it
+sounddevice>=0.4.6         # microphone capture
+
+# Document intelligence
+pypdf>=4.0.0               # read PDFs
+openpyxl>=3.1.0            # read spreadsheets
+
+# Clipboard access
+pyperclip>=1.8.2
+
+# Windows "now playing" metadata (playback control works without it)
+# winsdk>=1.0.0b10
+
+# Always-on wake-word detection
+# pvporcupine>=3.0.0
+
+# -- reading this computer's own notifications (Windows only) --------------
+# `UserNotificationListener` is the API Windows provides for reading the
+# Action Center. Windows asks the user for permission itself; verified
+# granted to an unpackaged Python process on Windows 11. Optional: without
+# these the feature reports itself unavailable rather than failing.
+winrt-Windows.UI.Notifications.Management>=3.2.1 ; sys_platform == "win32"
+winrt-Windows.UI.Notifications>=3.2.1            ; sys_platform == "win32"
+winrt-Windows.ApplicationModel>=3.2.1            ; sys_platform == "win32"
+winrt-Windows.Foundation>=3.2.1                  ; sys_platform == "win32"
+winrt-Windows.Foundation.Collections>=3.2.1      ; sys_platform == "win32"
+pypdf>=5.0
+# OpenJarvis makeover
+nvidia-ml-py>=12          # the GPU's own energy counter, for per-reply energy
+python-docx>=1.1          # read Word documents into the document index
