@@ -16,7 +16,20 @@ speaks.
 
 ---
 
-## Quick start
+## Download
+
+The easiest way: get **JARVIS-…-windows.zip** from the
+[latest release](https://github.com/Miekgames/jarvis/releases/latest), unzip
+it, and double-click **JARVIS.bat**.
+
+You need **Windows 10 or 11** and **Python 3.9+**
+([python.org](https://www.python.org/downloads/); tick "Add python.exe to
+PATH"). Node.js isn't needed: the interface comes already built. The first run
+takes a few minutes while it installs its Python packages into a `.venv`
+folder beside it; after that it starts straight away and opens in your
+browser.
+
+## Quick start (from source)
 
 You need **Windows 10 or 11**, **Python 3.9+** and **Node.js 18+**.
 
@@ -141,6 +154,19 @@ trusted:
   by hand (date and time), or just ask: "countdown to the World Cup". Dates
   come from you, the calendar, or several websites that agree, never from the
   model's memory; when sources disagree, JARVIS asks you.
+- **Today's facts, looked up and read:** "who's projected to win the Bears v
+  Lions game?", "who won the Lakers game last night?", "latest news on the AI
+  Act". JARVIS searches the day's news, reads several articles, and answers
+  from what they say, naming each source (and saying so when sources
+  disagree), instead of guessing or telling you to check a website. A short
+  follow-up ("and the over/under?") is looked up too.
+- **Skill colours:** each skill has its own colour, and the screen fades to it
+  while the skill is in use: orange while researching, green for reminders.
+  Ordinary replies keep the theme's own blue and violet. "Stop changing
+  colours" turns it off.
+- **Progress you can see:** while research or other long work runs, the
+  bottom-left corner of the screen fills as a progress bar with its real
+  progress.
 - **Everyday lookups:** convert units ("70 F in C", "5 miles in km") and
   money ("50 dollars in euros", at the European Central Bank's published
   rate), the time anywhere ("time in Tokyo"), a Wikipedia summary, a word's

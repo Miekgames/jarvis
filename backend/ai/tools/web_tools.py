@@ -35,6 +35,33 @@ def register(registry: ToolRegistry) -> None:
 
     # ==================================================================
     @registry.add(
+        "live_lookup",
+        "Look up today's facts and read the articles: who is favoured or projected to win a "
+        "game, the odds, a score, the latest news on something, a price. Returns the "
+        "sentences that answer the question, with their source and date.",
+        {"type": "object", "properties": {
+            "question": {"type": "string", "description": "The question, in the user's words"},
+        }, "required": ["question"]},
+        permission="web.search",
+        category="web",
+        timeout=60.0,
+    )
+    async def live_lookup(ctx, question: str):
+        from ...services.live_lookup import as_context, look_up
+
+        found = await look_up(ctx.get("web"), question)
+        if not found["pages"] and not found["results"]:
+            return fail(f"Nothing came up for '{found['query']}'.")
+        read = len(found["pages"])
+        sources = ", ".join(page["source"] for page in found["pages"]) or "headlines only"
+        # Plain text, not JSON: a small model reads sentences far better than
+        # escaped strings, and screening still wraps anything a page tried.
+        from datetime import datetime
+        today = datetime.now().strftime("%A %d %B %Y")       # so "an earlier day" means something
+        return ok(as_context(found, today), f"Read {read} article(s) for '{found['query']}': {sources}.")
+
+    # ==================================================================
+    @registry.add(
         "news_search",
         "Search recent news articles on a topic.",
         {"type": "object", "properties": {

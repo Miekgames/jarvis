@@ -7,6 +7,9 @@ Start JARVIS.
     python start.py --build    build the frontend, then serve everything from
                                the backend on a single port
     python start.py --no-open  don't open a browser
+    python start.py --prebuilt serve the interface that came built in a
+                               release download -- no Node.js needed
+                               (JARVIS.bat does this)
 
 The startup sequence itself (database -> AI core -> task engine -> scheduler ->
 ...) is reported by the backend and rendered by the UI; this script just brings
@@ -89,7 +92,7 @@ def banner() -> None:
 
 
 # ---------------------------------------------------------------------------
-def preflight(build_mode: bool) -> bool:
+def preflight(build_mode: bool, prebuilt: bool = False) -> bool:
     ok = True
 
     if sys.version_info < (3, 9):
@@ -119,6 +122,14 @@ def preflight(build_mode: bool) -> bool:
 
     if not _importable("dotenv"):
         say(f"  !  python-dotenv not installed; using the built-in .env parser", C_DIM)
+
+    # A release download comes with the interface already built.
+    if prebuilt:
+        if (FRONTEND / "dist" / "index.html").exists():
+            say(f"  {TICK}  Interface included (no Node.js needed)", C_GREEN)
+            return ok
+        say(f"  !  No built interface here - building it, which needs Node.js", C_YELLOW)
+        build_mode = True
 
     node = shutil.which("npm")
     if not node:
@@ -212,11 +223,13 @@ def main() -> int:
     parser.add_argument("--build", action="store_true",
                         help="build the frontend and serve it from the backend")
     parser.add_argument("--no-open", action="store_true", help="don't open a browser")
+    parser.add_argument("--prebuilt", action="store_true",
+                        help="serve the interface that came built in a release download")
     args = parser.parse_args()
 
     banner()
     say("  Pre-flight", C_CYAN)
-    if not preflight(build_mode=args.build):
+    if not preflight(build_mode=args.build, prebuilt=args.prebuilt):
         say("\n  Startup aborted - fix the items above and try again.\n", C_RED)
         return 1
 
@@ -234,7 +247,7 @@ def main() -> int:
     say(f"  {TICK}  Backend online", C_GREEN)
 
     url = f"http://localhost:{FRONTEND_PORT}"
-    if args.build:
+    if args.build or args.prebuilt:
         url = f"http://127.0.0.1:{BACKEND_PORT}"
         say(f"  {TICK}  Serving the built interface from the backend", C_GREEN)
     elif not args.backend:

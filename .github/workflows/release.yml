@@ -1,0 +1,55 @@
+name: Release
+
+# Push a version tag and this builds the download and publishes the release:
+#
+#     git tag -a v1.0.1 -m "JARVIS v1.0.1"
+#     git push origin v1.0.1
+#
+# The download is the app with its interface already built, so people need
+# Python but not Node.js: unzip, double-click JARVIS.bat. Release notes come
+# from docs/releases/<tag>.md when there is one.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the interface
+        working-directory: frontend
+        run: |
+          npm ci --no-fund --no-audit
+          npm run build
+
+      - name: Package the download
+        run: |
+          name="JARVIS-${GITHUB_REF_NAME}-windows"
+          mkdir -p "release/$name"
+          git archive --format=tar HEAD | tar -x -C "release/$name"
+          cp -r frontend/dist "release/$name/frontend/dist"
+          # Windows batch files need CRLF line endings.
+          find "release/$name" -name "*.bat" -exec sed -i 's/\r*$/\r/' {} +
+          (cd release && zip -qr9 "$name.zip" "$name")
+          ls -l release
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip="release/JARVIS-${GITHUB_REF_NAME}-windows.zip"
+          notes="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then
+            gh release create "$GITHUB_REF_NAME" "$zip" --title "JARVIS ${GITHUB_REF_NAME}" --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" "$zip" --title "JARVIS ${GITHUB_REF_NAME}" --generate-notes
+          fi

@@ -40,7 +40,8 @@ def color_for(skill: Any) -> str:
 # Everyday tools any reply may use. A skill that mentions one doesn't own it:
 # searching the web, reading a page or a file is not "using the research skill".
 EVERYDAY_TOOLS = {"web_search", "read_webpage", "read_file", "find_files", "list_folder",
-                  "find_in_code", "read_source", "calendar_view", "quick_research", "web_news"}
+                  "find_in_code", "read_source", "calendar_view", "quick_research", "web_news",
+                  "live_lookup"}
 # Tools whose skill isn't the one that happens to mention them.
 TOOL_SKILLS = {"deep_research": "deep-research", "research_topic": "deep-research",
                "set_reminder": "remind", "schedule_notification": "remind"}

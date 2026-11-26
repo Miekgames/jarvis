@@ -120,6 +120,11 @@ export function HudFrame() {
   const speed = still ? 0 : style.speed * (calm ? 0.4 : 1);
 
   const running = tasks.filter((t) => t.status === 'running').length;
+  // The furthest-along running task's real progress (0-1), or null.
+  const measured = tasks.filter((t) => t.status === 'running' && typeof t.progress === 'number');
+  const progress = measured.length
+    ? Math.min(1, Math.max(0.02, Math.max(...measured.map((t) => t.progress as number))))
+    : null;
 
   // Gauges are measured values only. `null` renders an empty track, because
   // "not measured" and "measured as zero" must not look the same.
@@ -150,6 +155,17 @@ export function HudFrame() {
         <path d="M 91 0.5 L 99.5 0.5 L 99.5 9" />
         <path d="M 99.5 91 L 99.5 99.5 L 91 99.5" />
         <path d="M 9 99.5 L 0.5 99.5 L 0.5 91" />
+        {/* The bottom-left corner doubles as a progress bar for running work
+            (research and other tasks): the real reported progress, filling
+            from the corner outward. Nothing running: just the bracket. */}
+        {progress !== null && (
+          <>
+            <path d="M 0.5 70 L 0.5 99.5 L 30 99.5" style={{ opacity: 0.18 }} />
+            <path d="M 0.5 70 L 0.5 99.5 L 30 99.5" pathLength={1}
+                  style={{ stroke: 'var(--accent)', strokeWidth: 3, opacity: 0.95,
+                           strokeDasharray: `${progress} 1`, transition: 'stroke-dasharray 600ms ease' }} />
+          </>
+        )}
         <path className="hud__corners-inner" d="M 2.2 13 L 2.2 2.2 L 13 2.2" />
         <path className="hud__corners-inner" d="M 87 97.8 L 97.8 97.8 L 97.8 87" />
       </svg>

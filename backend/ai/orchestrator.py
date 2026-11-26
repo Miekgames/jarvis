@@ -28,6 +28,7 @@ from .providers.base import Completion, Provider, ProviderError, RateLimited
 from .providers.ollama_provider import OllamaProvider
 from .prompt import build_compact_prompt, build_system_prompt
 from .telemetry import ReplyTelemetry
+from ..services.live_lookup import follow_up_question, needs_live_lookup
 from ..systemmon.energy import EnergyMeter
 
 async def _quietly(awaitable) -> None:
@@ -41,6 +42,28 @@ async def _quietly(awaitable) -> None:
 logger = logging.getLogger("jarvis.ai")
 
 MAX_TOOL_ITERATIONS = 12
+# A reply that ducks a question it could have looked up: "I don't have
+# real-time data", "let me search the web for you" (and then stopping), "check
+# sports news websites". A small local model says these instead of calling
+# the tool it has.
+_DODGED = re.compile(
+    r"\b(?:don't|do\s+not|can't|cannot)\s+(?:have\s+)?(?:access\s+to\s+)?"
+    r"(?:real[-\s]?time|live|current|up[-\s]to[-\s]date)\s+(?:data|information|info|access|results|updates)\b"
+    r"|\b(?:can't|cannot|unable\s+to)\s+(?:browse|access\s+the\s+(?:internet|web))\b"
+    r"|\blet\s+me\s+(?:search|look\s+(?:that|it)\s+up|check)\b"
+    r"|\bI(?:'ll|\s+will)\s+(?:search|look\s+(?:that|it)\s+up)\b"
+    r"|\b(?:check|visit|look\s+at)\s+(?:the\s+)?(?:latest\s+|official\s+|local\s+)?(?:\w+\s+)?"
+    r"(?:news\s+)?(?:websites?|sites?|sources?|sportsbooks?|odds|news|apps?)\b"
+    r"|\bas\s+of\s+my\s+(?:last|latest)\s+(?:update|training)\b|\bknowledge\s+cut-?off\b",
+    re.I,
+)
+
+
+def dodged_lookup(reply: str) -> bool:
+    """True when the reply put off a question it should have looked up."""
+    return bool(_DODGED.search(reply or ""))
+
+
 # Invented tool names in one turn before the tools are taken away and the
 # model is made to answer in words.
 MAX_UNKNOWN_TOOL_ATTEMPTS = 2
@@ -569,6 +592,26 @@ class Orchestrator:
             except Exception:
                 logger.debug("pattern learning failed", exc_info=True)
 
+        # "Who's projected to win the Bears v Lions game?": today's articles
+        # are read first and the model answers from them. Asked cold, a small
+        # local model says it has no live data, or answers from six snippets.
+        # A short follow-up ("and the over/under?") is looked up as part of
+        # the question before it.
+        looked_up = False
+        lookup_question: Optional[str] = None
+        if self.registry.get("live_lookup") is not None:
+            lookup_question = (message if needs_live_lookup(message) else
+                               follow_up_question(message, await self._last_lookup(conversation_id)))
+        if lookup_question:
+            looked_up = True
+            self.set_state(JarvisState.WORKING, "live_lookup")
+            yield {"type": "tool_start", "tool": "live_lookup", "input": {"question": lookup_question}}
+            end, found = await self._live_lookup(lookup_question, conversation_id)
+            yield end
+            if found:
+                await self._record_lookup(conversation_id, lookup_question, found)
+            self.set_state(JarvisState.THINKING)
+
         messages = await self.history(conversation_id)
         local_context: List[str] = []
         system_prompt = await self._system_prompt(message, extra_context, conversation_id,
@@ -628,6 +671,23 @@ class Orchestrator:
                 # ---- plain answer: we're done ---------------------------
                 if not completion.wants_tools:
                     final_text = completion.text or collected
+                    # "I don't have real-time data. Let me search the web for
+                    # you." -- and then nothing. Look it up and ask again; the
+                    # screen shows the real answer when it's done.
+                    if (not looked_up and dodged_lookup(final_text)
+                            and self.registry.get("live_lookup") is not None):
+                        looked_up = True
+                        logger.info("reply put off a look-up -- looking it up and asking again")
+                        self.set_state(JarvisState.WORKING, "live_lookup")
+                        question = lookup_question or message
+                        yield {"type": "delta", "text": "\n"}
+                        yield {"type": "tool_start", "tool": "live_lookup", "input": {"question": question}}
+                        end, found = await self._live_lookup(question, conversation_id)
+                        yield end
+                        self.set_state(JarvisState.THINKING)
+                        if found:
+                            await self._record_lookup(conversation_id, question, found, messages)
+                            continue
                     await self._save_message(
                         conversation_id, "assistant", final_text, completion.blocks or
                         [{"type": "text", "text": final_text}],
@@ -1092,6 +1152,54 @@ class Orchestrator:
         result = await self.registry.dispatch("change_setting", {"setting": setting, "value": value},
                                               conversation_id=conversation_id)
         return result.message or ("Done." if result.ok else "That setting couldn't be changed.")
+
+    async def _live_lookup(self, question: str, conversation_id: Optional[str]):
+        """Run live_lookup through the registry (permissions, audit, screening).
+
+        Returns the tool_end event for the screen, and what the model should
+        read -- empty when nothing was found or the look-up wasn't allowed.
+        """
+        started = time.perf_counter()
+        result = await self.registry.dispatch("live_lookup", {"question": question},
+                                              conversation_id=conversation_id)
+        screen = result.meta.get("screen") or {}
+        end = {
+            "type": "tool_end", "tool": "live_lookup", "ok": result.ok,
+            "summary": truncate(result.message or result.to_model_string(), 200),
+            "flagged": bool(screen.get("flagged")), "flag_level": screen.get("level", ""),
+            "redacted": sum((screen.get("redacted") or {}).values()),
+            "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+        }
+        return end, (result.to_model_string() if result.ok else "")
+
+    async def _last_lookup(self, conversation_id: str) -> str:
+        """The question the previous turn looked up, if it looked one up."""
+        try:
+            recent = await self.history(conversation_id, limit=6)
+        except Exception:
+            return ""
+        for entry in reversed(recent):
+            content = entry.get("content")
+            for block in (content if isinstance(content, list) else []):
+                if (isinstance(block, dict) and block.get("type") == "tool_use"
+                        and block.get("name") == "live_lookup"):
+                    return str((block.get("input") or {}).get("question") or "")
+        return ""
+
+    async def _record_lookup(self, conversation_id: str, question: str, found: str,
+                             messages: Optional[List[Dict[str, Any]]] = None) -> None:
+        """Keep the look-up in the conversation as a tool call and its result,
+        so the answer -- and the next question about it -- can use it."""
+        call_id = new_id("lookup")
+        blocks = [{"type": "tool_use", "id": call_id, "name": "live_lookup",
+                   "input": {"question": question}}]
+        results = [{"type": "tool_result", "tool_use_id": call_id,
+                    "content": truncate(found, 12000), "is_error": False}]
+        await self._save_message(conversation_id, "assistant", "", blocks)
+        await self._save_message(conversation_id, "user", "", results)
+        if messages is not None:
+            messages += [{"role": "assistant", "content": blocks},
+                         {"role": "user", "content": results}]
 
     async def _plain_research(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
         """"Research X", "look into X": the 15-20 minute research, started at once.

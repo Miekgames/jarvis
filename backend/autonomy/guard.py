@@ -69,7 +69,7 @@ NEVER_UNATTENDED = frozenset({
 # order to do anything useful at all.
 ALWAYS_SAFE = frozenset({
     "read_file", "list_files", "search_files", "file_preview",
-    "web_search", "read_webpage", "remember", "recall",
+    "web_search", "read_webpage", "live_lookup", "remember", "recall",
     "system_metrics", "list_processes", "wallpaper_options",
     "wallpaper_packs", "wallpaper_estimate",
 })
