@@ -21,8 +21,8 @@ speaks.
 You need **Windows 10 or 11**, **Python 3.9+** and **Node.js 18+**.
 
 ```bash
-git clone <this repository>
-cd <the folder it created>
+git clone https://github.com/Miekgames/jarvis.git
+cd jarvis
 pip install -r requirements.txt
 python start.py --build
 ```
