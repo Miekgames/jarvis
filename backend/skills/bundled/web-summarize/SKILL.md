@@ -3,6 +3,7 @@ name: web-summarize
 description: Summarise a web page or article from its address.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ffd166"
 ---
 
 # Summarising a page

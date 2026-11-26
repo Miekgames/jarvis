@@ -52,7 +52,7 @@ def test_invisible_characters_are_stripped():
     """Real toasts are full of them. The first one read on this machine had a
     U+2068 FIRST STRONG ISOLATE in the middle, which is harmless in a toast
     and breaks everything downstream that assumes printable text."""
-    assert dn.clean_text("Mike⁨ sent a message⁩") == "Mike sent a message"
+    assert dn.clean_text("Mike⁨ sent a message⁩") == "Sam sent a message"
     assert dn.clean_text("zero​width") == "zerowidth"
     assert dn.clean_text("﻿bom at the front") == "bom at the front"
 

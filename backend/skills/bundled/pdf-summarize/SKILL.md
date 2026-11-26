@@ -3,6 +3,7 @@ name: pdf-summarize
 description: Summarise a long document (PDF, Word, text) into its key points.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ff6b4a"
 ---
 
 # Summarising a document

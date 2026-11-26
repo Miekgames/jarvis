@@ -64,7 +64,7 @@ def test_deleting_inside_the_workspace_is_allowed(guard):
     "C:\\Program Files\\something\\app.exe",
     "/etc/passwd",
     "/usr/bin/python",
-    "C:\\Users\\Mike\\.ssh\\id_rsa",
+    "C:\\Users\\Sam\\.ssh\\id_rsa",
 ])
 def test_system_and_credential_paths_are_refused_for_writes(guard, path):
     for tool in ("write_file", "delete_file"):
@@ -195,7 +195,7 @@ def test_held_actions_keep_what_was_wanted_not_just_the_rule(tmp_path):
     """"Held a delete" is useless a day later."""
     session = AutonomySession("x", 240, 180, tmp_path)
     decision = session.guard.check("delete_file",
-                                   {"path": "C:/Users/Mike/taxes.pdf"})
+                                   {"path": "C:/Users/Sam/taxes.pdf"})
     session.hold(decision, "delete the old tax return")
 
     assert len(session.held) == 1

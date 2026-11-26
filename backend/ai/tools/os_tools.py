@@ -229,13 +229,69 @@ def register(registry: ToolRegistry) -> None:
         return ok(result, f"Stopped {run_id}.")
 
     # ==================================================================
+    # research that takes its time
+    # ==================================================================
+    @registry.add(
+        "research_topic",
+        "Research a topic properly in the background for 15 to 20 minutes -- many searches, pages "
+        "actually read, follow-up searches on what turns up -- then report 3 or 4 paragraphs of what "
+        "was found and what's next. Use when the owner asks to research, dig into, look into or find "
+        "out about something, or when a quick web search found nothing useful.",
+        {"type": "object", "properties": {
+            "topic": {"type": "string", "description": "What to research, in the owner's words"},
+            "minutes": {"type": "integer", "description": "15 to 20; default 17"},
+        }, "required": ["topic"]},
+        permission="web.search",
+        category="research investigate dig deep look into find out emulator report",
+    )
+    async def research_topic(ctx, topic: str, minutes: int = 17):
+        return await _research_long(ctx, topic, minutes)
+
+    # "Deep research" is what the owner calls the long kind.
+    @registry.add(
+        "deep_research",
+        "Deep research: research a topic properly in the background for 15 to 20 minutes, then "
+        "report 3 or 4 paragraphs of what was found and what's next. Use for 'research X', "
+        "'research it properly', 'deep dive into X', 'look into X', or when a quick search "
+        "found nothing useful.",
+        {"type": "object", "properties": {
+            "question": {"type": "string", "description": "What to research, in the owner's words"},
+        }, "required": ["question"]},
+        permission="web.search",
+        category="research investigate dig deep look into find out report",
+    )
+    async def deep_research(ctx, question: str, depth: str = "", background: bool = True):
+        return await _research_long(ctx, question, 17)
+
+    async def _research_long(ctx, topic: str, minutes: int = 17):
+        topic = " ".join((topic or "").split())
+        if len(topic) < 3:
+            return fail("Ask the owner what to research.")
+        minutes = max(15, min(int(minutes or 17), 20))
+        engine = ctx.get("tasks")
+        if engine is None:
+            return fail("Background tasks are unavailable.")
+        task = await engine.create(
+            name=f"Researching: {truncate(topic, 60)}",
+            task_type="long_research",
+            params={"question": topic, "minutes": minutes,
+                    "conversation_id": ctx.get("conversation_id")},
+            priority="normal",
+        )
+        return ok({"task_id": task["id"], "minutes": minutes},
+                  f"Started researching “{topic}”. It takes about {minutes} minutes; the report "
+                  "(3-4 paragraphs: what I found and what's next) will appear here and as a "
+                  "notification. The owner can watch or stop it in Tasks. Tell them that, briefly, "
+                  "and do NOT answer the question yourself now.")
+
+    # ==================================================================
     # deep research
     # ==================================================================
     @registry.add(
-        "deep_research",
-        "Research a question properly: multiple sources, tracked citations, disagreements between "
-        "sources surfaced, outdated material flagged. Saved as a project you can continue later. "
-        "Use for anything needing more than a quick look-up.",
+        "quick_research",
+        "A QUICK research pass of a minute or two: a few sources, citations, disagreements "
+        "surfaced. Only when the owner wants a fast answer; for deep research, digging into or "
+        "researching something properly, use deep_research.",
         {"type": "object", "properties": {
             "question": {"type": "string"},
             "depth": {"type": "string", "enum": ["quick", "standard", "deep"]},

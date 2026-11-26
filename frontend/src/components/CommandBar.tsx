@@ -215,6 +215,15 @@ export function CommandBar() {
       if (detail) say(detail);
     };
     window.addEventListener('jarvis:speak', onAutomation);
+    const onCompose = (event: Event) => {
+      const wanted = String((event as CustomEvent).detail ?? '');
+      setText(wanted);
+      window.setTimeout(() => {
+        const box = inputRef.current;
+        if (box) { box.focus(); box.setSelectionRange(wanted.length, wanted.length); }
+      }, 0);
+    };
+    window.addEventListener('jarvis:compose', onCompose);
     window.addEventListener('jarvis:spoke', onReply);
     return () => {
       window.removeEventListener('jarvis:speak', onAutomation);

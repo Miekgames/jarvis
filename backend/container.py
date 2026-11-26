@@ -415,6 +415,10 @@ class Container:
         from .integrations.email_account import EmailAccount
         self.services["email"] = EmailAccount(Path(self.settings.DATA_DIR), activity, audit)
 
+        # Reminders: scheduled notifications, also shown by Windows itself.
+        from .services.reminders import Reminders
+        self.services["reminders"] = Reminders(self.services["scheduler"])
+
         # Countdowns on the main screen, and the news behind each.
         from .services.countdowns import Countdowns
         self.services["countdowns"] = Countdowns(

@@ -80,7 +80,14 @@ class ActionRunner:
         )
         if action.get("speak"):
             await self._speak(f"{action.get('title', '')}. {action.get('body', '')}".strip())
-        return {"notification_id": record.get("id")}
+        shown = False
+        if action.get("desktop"):
+            # Reaches the owner with no JARVIS tab open.
+            from ..integrations import windows_toast
+
+            shown = await windows_toast.show(f"JARVIS · {action.get('title', 'Reminder')}",
+                                             action.get("body", ""))
+        return {"notification_id": record.get("id"), "windows_notification": shown}
 
     async def _do_speak(self, action: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         text = action.get("text", "")

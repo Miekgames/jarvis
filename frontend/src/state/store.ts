@@ -9,6 +9,7 @@ import { create } from 'zustand';
 
 import { api, ApiError, BusEvent, eventStream, streamChat } from '../lib/api';
 import type { FieldContext, FieldState } from '../gl/ParticleField';
+import type { ActiveSkill } from './skillColours';
 
 /** Live state of the wake word, so the UI can show it honestly. */
 export interface WakeStatus {
@@ -130,7 +131,7 @@ export type Panel =
   | null | 'tasks' | 'settings' | 'history' | 'automations'
   | 'system' | 'memory' | 'calendar' | 'integrations' | 'activity' | 'notifications'
   | 'goals' | 'agents' | 'research' | 'developer' | 'selfedit' | 'voice'
-  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns' | 'everyday';
+  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns' | 'everyday' | 'reminders';
 
 interface Store {
   // -- presence ------------------------------------------------------------
@@ -172,6 +173,8 @@ interface Store {
   confidence: number;
   /** Running agents, each a particle sub-cluster. */
   agents: { id: string; label: string; colour: string; activity: number }[];
+  /** Skills in use right now; the screen fades to the shown one's colour. */
+  activeSkills: ActiveSkill[];
 
   // -- ui ------------------------------------------------------------------
   panel: Panel;
@@ -328,6 +331,7 @@ export const useStore = create<Store>((set, get) => ({
   fieldContext: 'neutral' as FieldContext,
   confidence: 0.8,
   agents: [],
+  activeSkills: [],
 
   panel: null,
   toast: null,
@@ -380,6 +384,9 @@ export const useStore = create<Store>((set, get) => ({
         get().refreshTasks(),
         get().refreshNotifications(),
         get().loadSettings(),
+        api.get<{ active: ActiveSkill[] }>('/skills/active')
+          .then((r) => set({ activeSkills: r.active ?? [] }))
+          .catch(() => undefined),
       ]);
 
       const [metrics, activity, confirmations, history] = await Promise.all([
@@ -651,6 +658,11 @@ function handleEvent(event: BusEvent, set: any, get: () => Store) {
       }));
       break;
 
+    // Which skills are in use: the screen fades to the shown one's colour.
+    case 'skills.active':
+      set({ activeSkills: (event.data.active ?? []) as ActiveSkill[] });
+      break;
+
     case 'task.created':
     case 'task.started':
     case 'task.completed':
@@ -659,6 +671,13 @@ function handleEvent(event: BusEvent, set: any, get: () => Store) {
     case 'task.paused':
     case 'task.resumed':
       get().refreshTasks();
+      if (['task.completed', 'task.failed', 'task.cancelled'].includes(event.type)) {
+        // Work that ended takes its colour with it, even if its own
+        // goodbye was missed while the screen was reconnecting.
+        set((s: Store) => ({
+          activeSkills: s.activeSkills.filter((a) => a.id !== event.data.id),
+        }));
+      }
       if (event.type === 'task.completed') {
         set({ toast: `Task finished: ${event.data.name}` });
       } else if (event.type === 'task.failed') {
@@ -695,6 +714,20 @@ function handleEvent(event: BusEvent, set: any, get: () => Store) {
     case 'autonomy.progress':
       window.dispatchEvent(new CustomEvent('jarvis:autonomy',
                                            { detail: event.data }));
+      break;
+
+    // A setting changed by asking ("switch to the Ember theme").
+    case 'settings.changed':
+      void get().loadSettings();
+      break;
+
+    // "Open my reminders": the backend says which, this opens it.
+    case 'ui.open_panel':
+      set({ panel: (event.data.panel ?? null) as Panel });
+      break;
+
+    case 'schedule.changed':
+      window.dispatchEvent(new CustomEvent('jarvis:reminders'));
       break;
 
     case 'countdowns.changed':
@@ -866,7 +899,9 @@ function handleEvent(event: BusEvent, set: any, get: () => Store) {
       const conversationId = event.data.conversation_id as string;
       // Our own streamed conversation already renders locally; rendering the
       // broadcast too would double every message.
-      if (ownConversations.has(conversationId)) break;
+      // A report that finished long after the reply (research) is not a
+      // duplicate of anything streamed here, so it always shows.
+      if (ownConversations.has(conversationId) && !event.data.late) break;
       const text = (event.data.text ?? '').trim();
       if (!text) break;
 

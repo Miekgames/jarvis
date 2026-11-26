@@ -11,7 +11,7 @@ from .maintenance import (
     housekeeping_handler,
     organise_handler,
 )
-from .research import deep_research_handler, research_handler
+from .research import deep_research_handler, long_research_handler, research_handler
 
 # type -> (handler, resumable, human label, one-line description for the model)
 HANDLERS: Dict[str, Dict[str, Any]] = {
@@ -28,6 +28,13 @@ HANDLERS: Dict[str, Dict[str, Any]] = {
         "label": "Deep research",
         "description": "Multi-source research with citations, conflict detection and staleness "
                        "checks, saved as a resumable project. Params: question, depth, project_id.",
+    },
+    "long_research": {
+        "handler": long_research_handler,
+        "resumable": False,
+        "label": "Long research",
+        "description": "15-20 minutes of searching and reading, then a 3-4 paragraph report of "
+                       "what was found and what's next. Params: question, minutes, conversation_id.",
     },
     "agent": {
         "handler": agent_handler,

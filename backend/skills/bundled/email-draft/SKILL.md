@@ -4,6 +4,7 @@ description: Draft an email or message reply in the owner's voice from a few not
   about what to say.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ff7eb6"
 ---
 
 # Drafting an email

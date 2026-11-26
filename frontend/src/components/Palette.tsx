@@ -40,6 +40,7 @@ const PANELS: { key: Exclude<Panel, null>; label: string; keywords?: string }[] 
   { key: 'voice', label: 'What it heard', keywords: 'voice wake word microphone heard' },
   { key: 'activity', label: 'Activity', keywords: 'log events' },
   { key: 'calendar', label: 'Calendar', keywords: 'events schedule diary' },
+  { key: 'reminders', label: 'Reminders', keywords: 'remind notify notification schedule alarm every' },
   { key: 'countdowns', label: 'Countdowns', keywords: 'timer days until event release date news' },
   { key: 'everyday', label: 'Everyday lookups', keywords: 'convert units currency exchange time zone world clock wikipedia define dictionary dice coin random' },
   { key: 'automations', label: 'Automations', keywords: 'rules triggers' },

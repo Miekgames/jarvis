@@ -78,13 +78,19 @@ class Skill:
     # Only run as /name. For a skill whose whole job is one tool the model
     # is already offered, suggesting the skill as well is a detour.
     slash_only: bool = False
+    # The screen fades to this while the skill is in use ("#ffa63d"); a skill
+    # without one gets a colour made from its name (skills/activity.py).
+    color: str = ""
 
     def as_dict(self, body: bool = False) -> Dict[str, Any]:
+        from .activity import color_for
+
         out = {
             "name": self.name, "description": self.description, "tier": self.tier,
             "enabled": self.enabled, "version": self.version, "author": self.author,
             "tags": self.tags, "origin": self.origin, "flagged": self.flagged,
             "editable": self.tier != "bundled", "lines": len(self.body.splitlines()),
+            "color": color_for(self),
         }
         if body:
             out["body"] = self.body
@@ -156,6 +162,8 @@ def render(skill: Skill) -> str:
         front["author"] = skill.author
     if skill.tags:
         front["tags"] = skill.tags
+    if skill.color:
+        front["color"] = skill.color
     head = yaml.safe_dump(front, sort_keys=False, allow_unicode=True).strip()
     return f"---\n{head}\n---\n\n{skill.body.strip()}\n"
 
@@ -217,7 +225,8 @@ class SkillLibrary:
             version=str(front.get("version") or ""), author=str(front.get("author") or ""),
             tags=[str(t) for t in tags] if isinstance(tags, list) else [],
             origin=info.get("origin", ""), flagged=list(info.get("flagged") or []),
-            slash_only=bool(front.get("slash_only")))
+            slash_only=bool(front.get("slash_only")),
+            color=str(front.get("color") or "").strip())
 
     def all(self) -> List[Skill]:
         state = self._state()

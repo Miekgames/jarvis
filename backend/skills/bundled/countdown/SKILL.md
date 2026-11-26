@@ -4,6 +4,7 @@ description: Put a live countdown to an event on the main screen, with the lates
 version: 1.0.0
 author: jarvis
 slash_only: true
+color: "#ff8f5a"
 ---
 
 # Counting down to an event

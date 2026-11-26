@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ParticleField, type FieldOptions, type FieldState, type Rgb } from '../gl/ParticleField';
 import { eventStream } from '../lib/api';
+import { shownPalette, type Palette } from '../state/skillColours';
 import { useStore } from '../state/store';
 
 /**
@@ -55,6 +56,15 @@ export function ParticleStage() {
     const onResize = () => field.resize();
     window.addEventListener('resize', onResize);
 
+    // Colours follow the palette the ThemeFader is showing, frame by frame
+    // during a fade -- a skill's colour, or the chosen theme's.
+    const paint = (palette: Palette) => {
+      field.setOptions(paletteOptions(palette));
+      host.style.background = backdrop(palette.backdrop);
+    };
+    paint(shownPalette.get());
+    const stopPainting = shownPalette.subscribe(paint);
+
     // Pause when the tab is hidden — no reason to burn GPU on a background tab.
     const onVisibility = () => {
       if (document.hidden) field.stop();
@@ -75,6 +85,7 @@ export function ParticleStage() {
     window.addEventListener('pointerleave', onPointerLeave);
 
     return () => {
+      stopPainting();
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pointermove', onPointerMove);
@@ -145,7 +156,7 @@ export function ParticleStage() {
     fieldRef.current?.setOptions(fieldOptions(particleSettings, theme));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [particleSettings.count, particleSettings.quality, particleSettings.connections,
-      theme.accent, theme.particle_near, theme.particle_far, theme.reduced_motion]);
+      theme.reduced_motion]);
 
   if (sleeping) return null;
 
@@ -154,9 +165,6 @@ export function ParticleStage() {
       className="stage"
       ref={hostRef}
       aria-hidden="true"
-      style={theme.backdrop
-        ? { background: `radial-gradient(circle at 50% 45%, ${theme.backdrop} 0%, #04070d 62%, #02040a 100%)` }
-        : undefined}
     >
       {!supported && (
         <div className="field-fallback">
@@ -184,10 +192,20 @@ function fieldOptions(particles: Record<string, any>, theme: Record<string, any>
     particleCount: qualityToCount(particles),
     connections: particles.connections !== false,
     reducedMotion: !!theme.reduced_motion || prefersReducedMotion(),
-    accent: hexToRgb(theme.accent ?? '#5ad2ff'),
-    colorNear: hexToRgb(theme.particle_near ?? '#3890d9'),
-    colorFar: hexToRgb(theme.particle_far ?? '#17336b'),
+    ...paletteOptions(shownPalette.get()),
   };
+}
+
+function paletteOptions(palette: Palette): FieldOptions {
+  return {
+    accent: hexToRgb(palette.accent),
+    colorNear: hexToRgb(palette.particle_near),
+    colorFar: hexToRgb(palette.particle_far),
+  };
+}
+
+function backdrop(colour: string): string {
+  return `radial-gradient(circle at 50% 45%, ${colour} 0%, #04070d 62%, #02040a 100%)`;
 }
 
 function qualityToCount(settings: Record<string, any>): number {

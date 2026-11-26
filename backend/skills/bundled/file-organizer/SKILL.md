@@ -4,6 +4,7 @@ description: Plan a tidy-up of a messy folder, then carry it out only once the o
   agrees.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#d4a373"
 ---
 
 # Organising a folder

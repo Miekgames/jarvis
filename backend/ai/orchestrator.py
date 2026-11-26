@@ -64,6 +64,45 @@ class JarvisState:
     SLEEP = "sleep"
 
 
+_RESEARCH_SAID = re.compile(
+    r"(?:(?:can|could|will)\s+you\s+|please\s+|i\s+want\s+you\s+to\s+|go\s+and\s+)?"
+    r"(?:do\s+(?:some\s+|a\s+)?(?:deep\s+)?research\s+(?:on|into|about)"
+    r"|(?:deep\s+)?research(?:\s+(?:on|into|about))?"
+    r"|dig\s+into|look\s+into"
+    r"|find\s+out\s+(?:everything|all|more)\s+(?:you\s+can\s+)?about)"
+    r"\s+(.{3,200}?)(?:\s+(?:for\s+me|please|properly|in\s+depth))*")
+
+
+_STOP_SAID = re.compile(
+    r"(?:please\s+)?(?:stop|cancel|abort|kill|end)\s+"
+    r"(?:the\s+|that\s+|this\s+|my\s+)?(research(?:ing)?(?:\s+(?:on|into|about)\s+.+)?|task|"
+    r"background\s+task|job|.+?\s+research)")
+
+
+def stop_said(message: str) -> Optional[str]:
+    """"Stop the research", "cancel that task": which one, in the owner's words."""
+    said = " ".join((message or "").lower().strip(" .!?").split())
+    said = re.sub(r"^(?:hey\s+)?jarvis[,:]?\s+", "", said)
+    said = re.sub(r"\s+(?:please|now|right\s+now)$", "", said)
+    m = _STOP_SAID.fullmatch(said)
+    return m.group(1).replace("researching", "research") if m else None
+
+
+def research_topic_in(message: str) -> Optional[str]:
+    """The topic of a plain "research X" request, else None."""
+    said = " ".join((message or "").strip(" .!?").split())
+    said = re.sub(r"^(?:hey\s+)?jarvis[,:]?\s+", "", said, flags=re.I)
+    m = _RESEARCH_SAID.fullmatch(said.lower())
+    if not m:
+        return None
+    topic = said[m.start(1):m.end(1)].strip(" ,")
+    if topic.lower() in ("it", "that", "this", "them", "those", "this topic", "that topic"):
+        return None                                   # needs the conversation: the model's job
+    if re.match(r"(?:my|our|why\s+my|what'?s\s+wrong\s+with\s+my)(?:\s|$)", topic, re.I):
+        return None                                   # "look into my emails": not web research
+    return topic
+
+
 class Orchestrator:
     def __init__(self, db, settings, settings_store, registry, memory, activity, usage=None):
         self.db = db
@@ -131,12 +170,24 @@ class Orchestrator:
     def state(self) -> str:
         return self._state
 
+    @property
+    def owner_busy(self) -> bool:
+        """Answering the owner right now. Background work that shares the
+        model (long research) waits for this, so a reply is never stuck
+        behind twenty minutes of somebody else's questions."""
+        return self._state in (JarvisState.THINKING, JarvisState.WORKING)
+
     def set_state(self, state: str, detail: str = "") -> None:
         if state == self._state and detail == self._state_detail:
             return
         self._state = state
         self._state_detail = detail
         bus.publish(Events.STATE_CHANGED, {"state": state, "detail": detail}, source="ai")
+        if state == JarvisState.IDLE:
+            # The reply is over: the screen fades back from its skill's colour.
+            from ..skills.activity import skill_activity
+
+            skill_activity.reply_done()
 
     # ==================================================================
     # model routing
@@ -494,6 +545,21 @@ class Orchestrator:
 
         self.set_state(JarvisState.THINKING)
         yield {"type": "start", "conversation_id": conversation_id}
+
+        # "Open settings", "close that": done straight away, without the
+        # model -- quick, and it works even while research has the model busy.
+        done = self._open_or_close(message)
+        if done is None:
+            done = await self._plain_setting(message, conversation_id)
+        if done is None:
+            done = await self._plain_research(message, conversation_id)
+        if done is not None:
+            await self._save_message(conversation_id, "assistant", done,
+                                     [{"type": "text", "text": done}])
+            self.set_state(JarvisState.IDLE)
+            yield {"type": "delta", "text": done}
+            yield {"type": "final", "text": done, "conversation_id": conversation_id}
+            return
 
         # Learn from the command before answering it, so the very next turn can
         # already use the pattern.
@@ -1011,6 +1077,74 @@ class Orchestrator:
              completion.latency_ms, 1),
         )
 
+    async def _plain_setting(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
+        """"Turn on the wake word", "switch to the Ember theme": done, and said.
+
+        Goes through the tool runner like any other change, so it shows on
+        screen, is checked against permissions and lands in the activity log.
+        """
+        from .tools.control_tools import plain_setting
+
+        found = plain_setting(message)
+        if found is None or self.registry is None:
+            return None
+        setting, value = found
+        result = await self.registry.dispatch("change_setting", {"setting": setting, "value": value},
+                                              conversation_id=conversation_id)
+        return result.message or ("Done." if result.ok else "That setting couldn't be changed.")
+
+    async def _plain_research(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
+        """"Research X", "look into X": the 15-20 minute research, started at once.
+
+        The model used to pick the quick lookup for these, which drifted off the
+        question. Only "quick research ..." goes to the model now.
+        """
+        if self.registry is None:
+            return None
+        stop = stop_said(message)
+        if stop is not None:
+            result = await self.registry.dispatch("stop_task", {"which": stop},
+                                                  conversation_id=conversation_id)
+            return result.message or ("Stopped." if result.ok else "Nothing was stopped.")
+        topic = research_topic_in(message)
+        if topic is None:
+            return None
+        result = await self.registry.dispatch("research_topic", {"topic": topic},
+                                              conversation_id=conversation_id)
+        if not result.ok:
+            return result.message or "The research couldn't be started."
+        minutes = (result.data or {}).get("minutes", 17) if isinstance(result.data, dict) else 17
+        return (f"Researching “{topic}” now. It takes about {minutes} minutes: I'll put the report "
+                "here (what I found, and what's next) and send a notification. Say “stop the "
+                "research” to stop it.")
+
+    def _open_or_close(self, message: str) -> Optional[str]:
+        """The reply to "open <part of JARVIS>" / "close that", having done it;
+        None for anything else, which goes to the model as usual."""
+        from .tools.ui_tools import PANELS, _screens, which_panel
+
+        said = " ".join((message or "").lower().strip(" .!?").split())
+        said = re.sub(r"^(?:jarvis,?\s+)?(?:please\s+|can you\s+|could you\s+)?", "", said)
+        said = re.sub(r"\s+please$", "", said)
+        hub = self.registry.context.get("hub") if self.registry else None
+        nowhere = hub is not None and _screens(hub) == 0
+        if re.fullmatch(r"(?:close|hide|dismiss)(?:\s+(?:it|that|this|the\s+panel|the\s+menu|panel))?", said):
+            if nowhere:
+                return None
+            bus.publish("ui.open_panel", {"panel": None}, source="ui")
+            return "Closed."
+        m = re.fullmatch(r"(?:open|show(?:\s+me)?|go\s+to|bring\s+up|pull\s+up|take\s+me\s+to)\s+(.+)", said)
+        if not m:
+            return None
+        key = which_panel(m.group(1), exact=True)
+        if key is None:
+            return None
+        if nowhere:
+            return (f"There's no JARVIS screen open to show {PANELS[key][0]} on. Open JARVIS in "
+                    "a browser and ask again.")
+        bus.publish("ui.open_panel", {"panel": key}, source="ui")
+        return f"Opening {PANELS[key][0]}."
+
     def _skill_tools(self, message: str) -> str:
         """The tools named in the skill a "/name" message runs."""
         text = (message or "").strip()
@@ -1031,6 +1165,9 @@ class Orchestrator:
         skill = skills.get(name) if skills is not None and name else None
         if skill is None or not skill.enabled:
             return message, extra_context
+        from ..skills.activity import skill_activity
+
+        skill_activity.replying_with(skill)          # the screen wears its colour
         block = (f"The user invoked the skill '{skill.name}' ({skill.description}). "
                  f"Follow its instructions for this request:\n\n{skill.body}")
         request = rest.strip() or f"Run the {skill.name} skill."

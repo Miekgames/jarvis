@@ -12,6 +12,7 @@ import { Login } from './components/Login';
 import { Panels } from './components/Panels';
 import { SetupScreen } from './components/SetupScreen';
 import { ParticleStage } from './components/ParticleStage';
+import { ThemeFader } from './components/ThemeFader';
 import { SleepVeil } from './components/SleepVeil';
 import { Palette } from './components/Palette';
 import { Shortcuts } from './components/Shortcuts';
@@ -47,8 +48,8 @@ export default function App() {
   useEffect(() => {
     const theme = settings.theme ?? {};
     const root = document.documentElement;
-    if (theme.accent) root.style.setProperty('--accent', theme.accent);
-    if (theme.accent_secondary) root.style.setProperty('--secondary', theme.accent_secondary);
+    // The accent colours are the ThemeFader's: it fades them to a skill's
+    // colour while the skill is in use, and back to the theme's after.
     root.style.setProperty('--font-scale', String(theme.font_scale ?? 1));
     root.classList.toggle('high-contrast', !!theme.high_contrast);
   }, [settings.theme]);
@@ -83,6 +84,7 @@ export default function App() {
 
   return (
     <>
+      <ThemeFader />
       <ParticleStage />
 
       {authRequired && <Login />}

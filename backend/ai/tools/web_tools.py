@@ -24,7 +24,9 @@ def register(registry: ToolRegistry) -> None:
     async def web_search(ctx, query: str, max_results: int = 6):
         web = ctx.get("web")
         try:
-            results = await web.search(query, min(max_results, 12))
+            # Small models ask for one result and then answer from it; one
+            # result is how a question gets answered by the wrong page.
+            results = await web.search(query, max(6, min(int(max_results or 6), 12)))
         except RuntimeError as exc:
             return fail(str(exc))
         if not results:

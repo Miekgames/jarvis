@@ -434,7 +434,7 @@ async def test_host_registers_itself_once(devices, db):
 
 @pytest.mark.asyncio
 async def test_pairing_round_trip(devices):
-    pairing = await devices.begin_pairing("Mike's phone", "mobile")
+    pairing = await devices.begin_pairing("Sam's phone", "mobile")
     assert len(pairing["code"]) == 6
 
     claimed = await devices.complete_pairing(pairing["code"], "Pixel")
@@ -538,10 +538,10 @@ def test_other_launchers_are_recognised_too():
 
 def test_ordinary_desktop_applications_are_not_games():
     """The actual false positive: a large Electron app in AppData."""
-    for path in (r"C:\Users\Mike\AppData\Local\Programs\claude\claude.exe",
-                 r"C:\Users\Mike\AppData\Local\Discord\app-1.0\Discord.exe",
+    for path in (r"C:\Users\Sam\AppData\Local\Programs\claude\claude.exe",
+                 r"C:\Users\Sam\AppData\Local\Discord\app-1.0\Discord.exe",
                  r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                 r"C:\Users\Mike\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+                 r"C:\Users\Sam\AppData\Local\Programs\Microsoft VS Code\Code.exe",
                  r"C:\Program Files\Mozilla Firefox\firefox.exe"):
         assert not _in_a_game_library(path), path
 

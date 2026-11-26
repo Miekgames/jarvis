@@ -25,70 +25,91 @@ import { useStore, type Panel } from '../state/store';
  */
 
 /**
- * The menu, in groups.
+ * What JARVIS can do, in groups -- and what to say to get it.
  *
- * Seventeen entries in one flat column is a list you read rather than scan,
- * and the thing you want is never where you expect. Grouped, the eye goes
- * to a heading first and four items second.
- *
- * The order is roughly how often a thing gets opened, not alphabetical and
- * not how the code is organised: what JARVIS is doing right now, then what
- * it is making, then what it remembers, then the machinery.
+ * Nothing here has to be clicked: everything can be done by saying it. The
+ * line under each name is something to say that really works; clicking it
+ * just says it for you. "Open <name>" opens any of them.
  */
-interface Entry { key: Exclude<Panel, null>; label: string }
+interface Entry { key: Exclude<Panel, null>; label: string; say: string }
 interface Group { title: string; entries: Entry[] }
 
 const GROUPS: Group[] = [
   {
     title: 'Now',
     entries: [
-      { key: 'tasks', label: 'Tasks' },
-      { key: 'email', label: 'Email' },
-      { key: 'away', label: 'While away' },
-      { key: 'agents', label: 'Agents' },
-      { key: 'notifications', label: 'Notifications' },
+      { key: 'tasks', label: 'Tasks', say: 'what’s running?' },
+      { key: 'email', label: 'Email', say: 'any new emails?' },
+      { key: 'away', label: 'While away', say: 'while I’m away for an hour, build me a habit tracker' },
+      { key: 'agents', label: 'Agents', say: 'what are the agents doing?' },
+      { key: 'notifications', label: 'Notifications', say: 'any notifications?' },
     ],
   },
   {
     title: 'Make',
     entries: [
-      { key: 'skills', label: 'Skills' },
-      { key: 'workshop', label: 'Workshop' },
-      { key: 'selfedit', label: 'Self-edit' },
-      { key: 'developer', label: 'Developer' },
-      { key: 'research', label: 'Research' },
+      { key: 'research', label: 'Research', say: 'research the best budget headphones' },
+      { key: 'workshop', label: 'Workshop', say: 'make me a wallpaper pack of mountains' },
+      { key: 'developer', label: 'Developer', say: 'what’s changed in my code?' },
+      { key: 'selfedit', label: 'Self-edit', say: 'show me how your reminders code works' },
+      { key: 'skills', label: 'Skills', say: 'what skills do you have?' },
     ],
   },
   {
     title: 'Remember',
     entries: [
-      { key: 'history', label: 'History' },
-      { key: 'memory', label: 'Memory' },
-      { key: 'documents', label: 'Documents' },
-      { key: 'voice', label: 'Heard' },
-      { key: 'activity', label: 'Activity' },
+      { key: 'memory', label: 'Memory', say: 'what do you remember about me?' },
+      { key: 'documents', label: 'Documents', say: 'search my documents for the warranty' },
+      { key: 'history', label: 'History', say: 'open History' },
+      { key: 'activity', label: 'Activity', say: 'what have you been doing?' },
+      { key: 'voice', label: 'Voice', say: 'turn on the wake word' },
     ],
   },
   {
     title: 'Plan',
     entries: [
-      { key: 'goals', label: 'Goals' },
-      { key: 'calendar', label: 'Calendar' },
-      { key: 'countdowns', label: 'Countdowns' },
-      { key: 'everyday', label: 'Everyday' },
-      { key: 'automations', label: 'Automations' },
+      { key: 'reminders', label: 'Reminders', say: 'remind me at 7pm to call Dad' },
+      { key: 'countdowns', label: 'Countdowns', say: 'countdown to the World Cup 2030' },
+      { key: 'calendar', label: 'Calendar', say: 'what’s on my calendar today?' },
+      { key: 'goals', label: 'Goals', say: 'how are my goals going?' },
+      { key: 'everyday', label: 'Everyday', say: 'what time is it in Tokyo?' },
+      { key: 'automations', label: 'Automations', say: 'every morning at 8 tell me the weather' },
     ],
   },
   {
     title: 'System',
     entries: [
-      { key: 'system', label: 'System' },
-      { key: 'integrations', label: 'Integrations' },
-      { key: 'plugins', label: 'Plug-ins' },
-      { key: 'settings', label: 'Settings' },
+      { key: 'system', label: 'System', say: 'how’s my PC doing?' },
+      { key: 'integrations', label: 'Integrations', say: 'open Integrations' },
+      { key: 'plugins', label: 'Plug-ins', say: 'open Plug-ins' },
+      { key: 'settings', label: 'Settings', say: 'make your answers shorter' },
     ],
   },
 ];
+
+/** Say it: exactly as if it had been typed and sent. */
+function say(text: string) {
+  void useStore.getState().send(text, 'text');
+}
+
+/** Put a request in the message box, ready to finish and send. */
+export function compose(text: string) {
+  window.dispatchEvent(new CustomEvent('jarvis:compose', { detail: text }));
+}
+
+interface SkillLine { name: string; description: string; enabled: boolean; color?: string }
+
+/** The slash skills, for the bottom of the list. */
+function useSlashSkills(open: boolean) {
+  const [skills, setSkills] = useState<SkillLine[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    api.get<{ skills: SkillLine[] }>('/skills')
+      .then((data) => setSkills((data.skills ?? []).filter((s) => s.enabled)))
+      .catch(() => { /* the list just stays as it was */ });
+  }, [open]);
+  return skills;
+}
 
 const ENTRIES: Entry[] = GROUPS.flatMap((group) => group.entries);
 
@@ -111,6 +132,9 @@ export function Sidebar() {
   const unread = notifications.filter((n) => !n.read).length;
 
   const away = useAwayWatch(panel === 'away');
+  // Loaded when the list is first reached for, not on every page load.
+  const [reached, setReached] = useState(false);
+  const slashSkills = useSlashSkills(reached || drawer);
   const unreadMail = useUnreadMail();
 
   const badge = (key: string): { count: number | string; warn: boolean; live?: boolean } | null => {
@@ -187,6 +211,8 @@ export function Sidebar() {
 
     <aside
       className={`sidebar ${panel ? 'sidebar--open' : ''} ${drawer ? 'sidebar--drawer' : ''}`}
+      onPointerEnter={() => setReached(true)}
+      onFocus={() => setReached(true)}
       aria-label="System status and panels"
     >
       {/* ------------------------------------------------- system readout */}
@@ -222,8 +248,9 @@ export function Sidebar() {
 
       <div className="sidebar__divider" aria-hidden="true" />
 
-      {/* ------------------------------------------------------- the panels */}
-      <nav className="sidebar__nav">
+      {/* ---------------------------------------------- what it can do */}
+      <nav className="sidebar__nav" aria-label="What JARVIS can do">
+        <div className="sidebar__heading">Just say it</div>
         {GROUPS.map((group) => (
           <div className="sidebar__group" key={group.title}>
             <div className="sidebar__group-title">{group.title}</div>
@@ -232,29 +259,43 @@ export function Sidebar() {
               return (
                 <button
                   key={entry.key}
-                  className={`sidebar__item ${panel === entry.key ? 'sidebar__item--active' : ''}`}
-                  onClick={() => { setPanel(entry.key); setDrawer(false); }}
-                  aria-pressed={panel === entry.key}
+                  className={`sidebar__skill ${panel === entry.key ? 'sidebar__item--active' : ''}`}
+                  onClick={() => { say(entry.say); setDrawer(false); }}
+                  title={`Says “${entry.say}” — or say it yourself`}
                 >
-                  <span className="sidebar__marker">
-                    {marker
-                      ? (
-                        <span className={`sidebar__badge ${marker.warn ? 'sidebar__badge--warn' : ''} ${marker.live ? 'sidebar__badge--live' : ''}`}
-                              title={entry.key === 'away'
-                                ? (away === 'running' ? 'Working while you are away'
-                                   : 'Finished — see what it made')
-                                : undefined}>
-                          {marker.count}
-                        </span>
-                      )
-                      : <span className="sidebar__tick" aria-hidden="true" />}
+                  <span className="sidebar__item">
+                    <span className="sidebar__marker">
+                      {marker
+                        ? (
+                          <span className={`sidebar__badge ${marker.warn ? 'sidebar__badge--warn' : ''} ${marker.live ? 'sidebar__badge--live' : ''}`}>
+                            {marker.count}
+                          </span>
+                        )
+                        : <span className="sidebar__tick" aria-hidden="true" />}
+                    </span>
+                    <span className="sidebar__label">{entry.label}</span>
                   </span>
-                  <span className="sidebar__label">{entry.label}</span>
+                  <span className="sidebar__say">“{entry.say}”</span>
                 </button>
               );
             })}
           </div>
         ))}
+
+        {slashSkills.length > 0 && (
+          <div className="sidebar__group">
+            <div className="sidebar__group-title">Skills · say / and the name</div>
+            {slashSkills.map((skill) => (
+              <button key={skill.name} className="sidebar__say sidebar__say--skill"
+                      title={`${skill.description} The screen turns this colour while it's in use.`}
+                      onClick={() => { compose(`/${skill.name} `); setDrawer(false); }}>
+                <span className="sidebar__skill-colour" aria-hidden="true"
+                      style={{ background: skill.color ?? 'var(--accent)' }} />
+                /{skill.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <button
           className="sidebar__item"

@@ -3,6 +3,7 @@ name: topic-research
 description: Research a topic on the web and write a short, sourced brief.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ffbe5c"
 ---
 
 # Researching a topic

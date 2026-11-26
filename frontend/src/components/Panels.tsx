@@ -10,6 +10,7 @@ import { VoicePanel } from './panels/VoicePanel';
 import { AwayPanel } from './panels/AwayPanel';
 import { SkillsPanel } from './panels/SkillsPanel';
 import { PluginsPanel } from './panels/PluginsPanel';
+import { RemindersPanel } from './panels/RemindersPanel';
 import { CountdownsPanel } from './panels/CountdownsPanel';
 import { EverydayPanel } from './panels/EverydayPanel';
 import { DocumentsPanel } from './panels/DocumentsPanel';
@@ -61,6 +62,7 @@ export function Panels() {
     documents: 'Documents',
     email: 'Email',
     countdowns: 'Countdowns',
+    reminders: 'Reminders',
     everyday: 'Everyday lookups',
   };
 
@@ -88,6 +90,7 @@ export function Panels() {
     documents: <DocumentsPanel />,
     email: <EmailPanel />,
     countdowns: <CountdownsPanel />,
+    reminders: <RemindersPanel />,
     everyday: <EverydayPanel />,
   };
 

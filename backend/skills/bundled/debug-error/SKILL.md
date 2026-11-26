@@ -4,6 +4,7 @@ description: Work out why an error happened and how to fix it, from an error mes
   or stack trace.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ff5c6e"
 ---
 
 # Debugging an error

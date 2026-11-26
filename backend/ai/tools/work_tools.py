@@ -142,31 +142,6 @@ def register(registry: ToolRegistry) -> None:
     # scheduling and reminders
     # ==================================================================
     @registry.add(
-        "set_reminder",
-        "Create a reminder that fires at a specific time. Use for 'remind me at 7pm', 'remind me in "
-        "20 minutes', 'remind me tomorrow at 9'.",
-        {"type": "object", "properties": {
-            "text": {"type": "string", "description": "What to remind the user about"},
-            "when": {"type": "string", "description": "ISO datetime, or a relative phrase like "
-                                                      "'in 20 minutes', 'in 2 hours', 'tomorrow 09:00'"},
-            "priority": {"type": "string", "enum": ["low", "normal", "high", "critical"]},
-        }, "required": ["text", "when"]},
-        permission="tasks.create",
-        category="scheduling",
-    )
-    async def set_reminder(ctx, text: str, when: str, priority: str = "normal"):
-        run_at = _parse_when(when)
-        if run_at is None:
-            return fail(f"I couldn't work out when '{when}' is. Give me a time like '19:00', "
-                        f"'in 30 minutes' or an ISO datetime.")
-        record = await ctx.get("scheduler").create_reminder(text, iso(run_at), priority)
-        local = run_at.astimezone()
-        return ok(
-            {"schedule_id": record["id"], "fires_at": record["next_run"]},
-            f"Reminder set for {local.strftime('%H:%M on %A %d %B')}.",
-        )
-
-    @registry.add(
         "create_schedule",
         "Create a recurring or one-off schedule that runs an action. Use for 'every Monday at 8am give "
         "me my schedule', 'every night at 2am back up', 'every 30 minutes check X'.",

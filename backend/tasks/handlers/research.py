@@ -181,3 +181,75 @@ async def deep_research_handler(ctx: TaskContext):
         "unreachable": result["unreachable"],
         "citations": [c["text"] for c in result["citations"]],
     }
+
+
+# ---------------------------------------------------------------------------
+async def long_research_handler(ctx: TaskContext):
+    """Fifteen to twenty minutes of research, then a 3-4 paragraph report,
+    delivered into the conversation it was asked in and as a notification."""
+    from ...core.events import Events, bus
+    from ...core.util import now_iso
+    from ...db.database import dumps
+    from ...intelligence.long_research import LongResearch, as_message, paragraphs
+
+    question = (ctx.params.get("question") or "").strip()
+    if not question:
+        raise ValueError("Research needs a question.")
+    services = ctx.services
+    worker = LongResearch(services["orchestrator"], services["web"], log=ctx.log)
+
+    async def progress(fraction: float, step: str) -> None:
+        ctx.checkpoint_now()
+        await ctx.progress(fraction, step)
+
+    await ctx.log(f"Researching for about {ctx.params.get('minutes', 17)} minutes: {question}")
+    # The screen wears the deep-research colour for as long as this runs --
+    # until the report, or until it is stopped.
+    from ...skills.activity import skill_activity
+
+    skills = services.get("skills")
+    skill_activity.task_started(ctx.task_id, skills.get("deep-research") if skills else None)
+    try:
+        result = await worker.run(question, ctx.params.get("minutes", 17), progress)
+    finally:
+        skill_activity.task_done(ctx.task_id)
+    await ctx.log(f"{result['searches']} searches, {result['pages_read']} pages read, "
+                  f"{result['findings']} findings")
+    message = as_message(result)
+    first = (paragraphs(result["report"]) or [""])[0]
+
+    # Kept with the other research, so it can be found again.
+    research = services.get("research")
+    if research is not None:
+        try:
+            project = await research.create(question, "deep")
+            await research.db.execute(
+                "UPDATE research_projects SET status = 'complete', summary = ?, report = ?,"
+                " queries = ?, task_id = ?, updated_at = ? WHERE id = ?",
+                (first[:600], message, dumps(result["queries"]), ctx.task_id, now_iso(),
+                 project["id"]))
+            result["project_id"] = project["id"]
+        except Exception:
+            logger.debug("could not save the research project", exc_info=True)
+
+    # Into the conversation it was asked in.
+    conversation_id = ctx.params.get("conversation_id")
+    orchestrator = services.get("orchestrator")
+    if conversation_id and orchestrator is not None:
+        try:
+            await orchestrator._save_message(conversation_id, "assistant", message,
+                                             [{"type": "text", "text": message}])
+            bus.publish(Events.MESSAGE, {"conversation_id": conversation_id, "role": "assistant",
+                                         "text": message, "late": True}, source="research")
+        except Exception:
+            logger.debug("could not post the report to the conversation", exc_info=True)
+
+    notifications = services.get("notifications")
+    if notifications is not None:
+        await notifications.create(title=f"Research finished: {question[:70]}",
+                                   body=first[:400], priority="high", source="research",
+                                   action={"panel": "research"})
+    await ctx.progress(1.0, "Done")
+    return {key: result.get(key) for key in ("report", "sources", "minutes", "searches",
+                                             "pages_read", "findings", "stopped_early")} | {
+        "project_id": result.get("project_id")}

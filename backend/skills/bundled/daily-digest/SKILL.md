@@ -3,6 +3,7 @@ name: daily-digest
 description: 'A morning briefing: schedule, weather, reminders and what matters today.'
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#f2e27a"
 ---
 
 # Daily digest

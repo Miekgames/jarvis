@@ -3,6 +3,7 @@ name: todo-from-notes
 description: Pull the actual to-dos out of messy notes, an email or a brain dump.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#7ee081"
 ---
 
 # To-dos from notes

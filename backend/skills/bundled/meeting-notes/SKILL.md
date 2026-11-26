@@ -4,6 +4,7 @@ description: Turn rough meeting notes or a transcript into clean notes with deci
   and action items.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#b4e05a"
 ---
 
 # Meeting notes

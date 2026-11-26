@@ -272,6 +272,19 @@ class ToolRegistry:
             if word in self._tools and word not in wanted:
                 wanted.append(word)
 
+        if _SETTING.search(query or ""):
+            wanted.append("change_setting")
+        if _AWAY.search(query or ""):
+            wanted += ["start_away_work", "stop_away_work"]
+        if _OPEN.search(query or ""):
+            wanted.append("open_panel")
+        if _REMIND.search(query or ""):
+            wanted += ["schedule_notification", "list_reminders", "cancel_reminder"]
+        if _RESEARCH.search(query or ""):
+            wanted.append("deep_research")
+        if re.search(r"\b(?:stop|cancel|abort)\b.*\b(?:research\w*|task|job)\b", query or "", re.I):
+            wanted.append("stop_task")
+
         # "How many days until..." is nearly all scaffolding words.
         if _COUNTDOWN.search(query or ""):
             wanted += ["add_countdown", "list_countdowns", "remove_countdown"]
@@ -410,6 +423,15 @@ class ToolRegistry:
             },
             source="tools",
         )
+        if task_id is None:
+            # A reply calling a skill's own tool is using that skill: the
+            # screen fades to its colour. Background work never repaints it.
+            try:
+                from ...skills.activity import skill_activity
+
+                skill_activity.tool_used(name, arguments, self.context.get("skills"))
+            except Exception:
+                logger.debug("skill colour not updated", exc_info=True)
         started = time.monotonic()
 
         try:
@@ -569,6 +591,18 @@ _SCAFFOLDING = frozenset("""
 # question about the outside world rarely contains the word "search".
 _ALWAYS_OFFERED = ("web_search", "read_webpage")
 
+_SETTING = re.compile(r"\b(?:turn|switch)\s+(?:on|off)\b|\b(?:turn|switch)\s+.+\s+(?:on|off)\b|"
+                      r"\b(?:enable|disable|mute|unmute)\b|\btheme\b|\bset\s+(?:the\s+)?\w+\s+to\b|"
+                      r"\bspeak\s+(?:faster|slower|louder|quieter)\b|\b(?:shorter|longer)\s+(?:answers|replies)\b|"
+                      r"\b(?:answers|replies)\s+(?:shorter|longer)\b", re.I)
+_AWAY = re.compile(r"\bwhile\s+i(?:'m|\s+am)\s+(?:away|out|gone)\b|\bi'?m\s+(?:going\s+out|heading\s+out|leaving)\b|"
+                   r"\baway\s+work\b|\bwhen\s+i(?:'m|\s+am)\s+(?:away|out)\b", re.I)
+_OPEN = re.compile(r"^\s*(?:please\s+)?(?:open|show(?:\s+me)?|go\s+to|bring\s+up|pull\s+up|"
+                   r"take\s+me\s+to|close)", re.I)
+_REMIND = re.compile(r"\b(?:remind(?:er|ers)?|notify\s+me|alert\s+me|ping\s+me|"
+                     r"schedule\s+a\s+notification|notifications?\s+(?:at|every|in))\b", re.I)
+_RESEARCH = re.compile(r"\b(?:research|dig\s+(?:in|into)|look\s+into|investigate|"
+                       r"find\s+out\s+(?:everything|all|more)\s+about)\b", re.I)
 _COUNTDOWN = re.compile(r"\bcount(?:ing)?\s?-?down", re.I)
 _HOW_LONG = re.compile(r"\bhow\s+(?:long|much\s+longer|many\s+(?:days|weeks|months|sleeps))\b"
                        r".*\b(?:until|till|til|before|left)\b", re.I)

@@ -52,6 +52,14 @@ async def list_skills(user: Dict[str, Any] = Depends(current_user)):
     return {"skills": [s.as_dict() for s in _library().all()]}
 
 
+@router.get("/skills/active", tags=["skills"])
+async def active_skills(user: Dict[str, Any] = Depends(current_user)):
+    """The skills in use right now, with their colours (for a screen that just opened)."""
+    from ..skills.activity import skill_activity
+
+    return {"active": skill_activity.current()}
+
+
 @router.get("/skills/{name}", tags=["skills"])
 async def get_skill(name: str, user: Dict[str, Any] = Depends(current_user)):
     skill = _library().get(name)

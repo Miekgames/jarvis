@@ -116,6 +116,23 @@ trusted:
 
 - **Conversation** with streaming replies, tool use, voice in and out, and a
   wake word ("Jarvis, …").
+- **Just say it:** everything in the sidebar can be done by asking, with no
+  menus. "Open my reminders", "close that", "turn on the wake word", "make
+  your answers shorter", "switch to the Ember theme", "speak a bit slower",
+  "while I'm away for an hour, build me a habit tracker", "stop the
+  research". Plain requests like these happen at once, without waiting on the
+  model. The sidebar lists what JARVIS can do and something to say for each.
+- **Reminders and scheduled notifications:** "remind me at 7 to call Dad",
+  "every weekday at 7:30 tell me to stretch", "in 20 minutes check the oven".
+  The time is worked out from your words, not guessed by the model, and you
+  see when it will go off before it's saved. Reminders also appear as Windows
+  notifications, so they reach you with no JARVIS tab open.
+- **Long research:** "research Switch 2 emulators for Android" spends 15 to 20
+  minutes searching, reading pages and following up on what turns up, then
+  reports in four paragraphs: the answer, the details, the caveats, and what's
+  next, with its sources. It stays on the question asked, flags lookalike
+  sites named after the topic, and if nothing new turns up it stops early and
+  says so.
 - **Email** (Gmail, Outlook, iCloud, Yahoo, or any IMAP/SMTP account, using an
   app password): inbox, search, read, reply. Reading never marks mail as read.
   Sending always asks first.
@@ -136,7 +153,8 @@ trusted:
 - **Memory** that learns lasting facts you mention ("I'm vegetarian") without
   being asked. Each one is marked, visible and deletable.
 - **Skills:** reusable instructions (`/meeting-notes`, `/email-draft`,
-  `/countdown`, …). Fifteen are included, and you can write or import your own.
+  `/countdown`, `/remind`, `/deep-research`, …). Seventeen are included, and
+  you can write or import your own.
 - **Plug-ins** via the Model Context Protocol (MCP): paste a server's config
   and its tools become JARVIS's tools.
 - **While away:** give JARVIS a goal and a time span (30 minutes to a day).

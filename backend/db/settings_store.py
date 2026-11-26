@@ -30,6 +30,8 @@ DEFAULTS: Dict[str, Any] = {
         "reduced_motion": False,
         "font_scale": 1.0,
         "high_contrast": False,
+        # The screen fades to a skill's own colour while it's in use.
+        "skill_colors": True,
     },
     "particles": {
         "count": 4200,

@@ -1383,7 +1383,7 @@ a { color: var(--accent); }
    --------------------------------------------------------------------------- */
 .sidebar {
   --rail: 2.5rem;              /* what stays visible when collapsed */
-  --open: 11.5rem;             /* full width */
+  --open: 16rem;               /* full width: names, and what to say */
 
   position: fixed;
   right: 0;
@@ -3011,3 +3011,42 @@ a { color: var(--accent); }
   background: rgba(90, 210, 255, 0.06); font-size: 0.85rem; line-height: 1.45; }
 .ev-answer p { margin: 0 0 0.25rem; }
 .ev-answer a { word-break: break-all; }
+
+/* ------------------------------------------------------------------------
+   The sidebar as a list of what JARVIS can do, each with what to say.
+   ------------------------------------------------------------------------ */
+.sidebar__nav { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.sidebar__nav::-webkit-scrollbar { display: none; }
+.sidebar__heading {
+  margin: 0.1rem 0 0.4rem var(--rail);
+  font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.26em; text-transform: uppercase;
+  color: var(--accent-soft);
+  opacity: 0; transition: opacity 280ms ease;
+}
+.sidebar:hover .sidebar__heading, .sidebar:focus-within .sidebar__heading,
+.sidebar--open .sidebar__heading, .sidebar--drawer .sidebar__heading { opacity: 1; }
+.sidebar__skill { display: flex; flex-direction: column; align-items: stretch; text-align: left; width: 100%; }
+.sidebar__skill .sidebar__item { pointer-events: none; }
+.sidebar__skill:hover .sidebar__label, .sidebar__skill:focus-visible .sidebar__label { color: var(--ink); }
+.sidebar__skill:hover .sidebar__say, .sidebar__skill:focus-visible .sidebar__say { color: var(--accent); }
+.sidebar__say {
+  margin: -0.15rem 0 0.25rem var(--rail);
+  padding: 0.12rem 0.9rem 0.12rem 0;
+  text-align: left;
+  font-size: 0.66rem; line-height: 1.35;
+  color: var(--ink-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: 0; transition: opacity 280ms ease, color 160ms ease;
+}
+.sidebar:hover .sidebar__say, .sidebar:focus-within .sidebar__say,
+.sidebar--open .sidebar__say, .sidebar--drawer .sidebar__say { opacity: 1; }
+.sidebar__say:hover, .sidebar__say:focus-visible { color: var(--accent); }
+.sidebar__say--skill {
+  margin: 0 0 0.1rem var(--rail);
+  font-family: var(--mono); font-size: 0.66rem; color: var(--ink-soft);
+}
+.sidebar__skill-colour {
+  display: inline-block; width: 0.42rem; height: 0.42rem; margin-right: 0.45rem;
+  border-radius: 50%; vertical-align: 0.05rem;
+  box-shadow: 0 0 6px currentColor;
+}

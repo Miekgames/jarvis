@@ -61,7 +61,7 @@ export function DeveloperPanel() {
         </p>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <input className="text-input" style={{ flex: 1, maxWidth: 'none' }}
-                 placeholder="C:\\Users\\Mike\\Downloads\\project-jarvis"
+                 placeholder="C:\\Users\\you\\Downloads\\project-jarvis"
                  value={path} onChange={(e) => setPath(e.target.value)} />
           <button className="btn btn--primary" onClick={async () => {
             try {

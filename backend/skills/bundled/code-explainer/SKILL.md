@@ -3,6 +3,7 @@ name: code-explainer
 description: Explain what a piece of code does, in plain language, step by step.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#9be15d"
 ---
 
 # Explaining code

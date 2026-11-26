@@ -3,6 +3,7 @@ name: compare-docs
 description: Compare two documents or versions and say what changed and what matters.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#c5cf3b"
 ---
 
 # Comparing documents

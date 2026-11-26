@@ -4,6 +4,7 @@ description: Translate text or a document into another language, keeping its for
   and tone.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ff4fd8"
 ---
 
 # Translating

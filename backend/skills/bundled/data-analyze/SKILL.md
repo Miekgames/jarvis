@@ -3,6 +3,7 @@ name: data-analyze
 description: Look at a CSV or table of numbers and report what it shows.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#20c997"
 ---
 
 # Analysing data

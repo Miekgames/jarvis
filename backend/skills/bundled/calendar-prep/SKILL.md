@@ -3,6 +3,7 @@ name: calendar-prep
 description: Prepare a short briefing for an upcoming meeting or event.
 version: 1.0.0
 author: jarvis (adapted from OpenJarvis)
+color: "#ff9eaa"
 ---
 
 # Preparing for an event
