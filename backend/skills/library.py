@@ -75,6 +75,9 @@ class Skill:
     tags: List[str] = field(default_factory=list)
     origin: str = ""                  # where an imported skill came from
     flagged: List[str] = field(default_factory=list)
+    # Only run as /name. For a skill whose whole job is one tool the model
+    # is already offered, suggesting the skill as well is a detour.
+    slash_only: bool = False
 
     def as_dict(self, body: bool = False) -> Dict[str, Any]:
         out = {
@@ -213,7 +216,8 @@ class SkillLibrary:
             enabled=front["name"] not in disabled,
             version=str(front.get("version") or ""), author=str(front.get("author") or ""),
             tags=[str(t) for t in tags] if isinstance(tags, list) else [],
-            origin=info.get("origin", ""), flagged=list(info.get("flagged") or []))
+            origin=info.get("origin", ""), flagged=list(info.get("flagged") or []),
+            slash_only=bool(front.get("slash_only")))
 
     def all(self) -> List[Skill]:
         state = self._state()
@@ -242,6 +246,8 @@ class SkillLibrary:
             return []
         scored = []
         for skill in self.enabled():
+            if skill.slash_only:
+                continue
             name_terms = _terms(skill.name.replace("-", " "))
             terms = name_terms | _terms(skill.description) | {t.lower() for t in skill.tags}
             hits = wanted & terms

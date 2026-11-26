@@ -119,12 +119,17 @@ trusted:
 - **Email** (Gmail, Outlook, iCloud, Yahoo, or any IMAP/SMTP account, using an
   app password): inbox, search, read, reply. Reading never marks mail as read.
   Sending always asks first.
+- **Countdowns:** up to three on the main screen, ticking in months, days,
+  hours, minutes and seconds. Click one for the latest news about it. Set them
+  by hand (date and time), or just ask: "countdown to the World Cup". Dates
+  come from you, the calendar, or several websites that agree, never from the
+  model's memory; when sources disagree, JARVIS asks you.
 - **Your documents:** add folders and ask questions. Answers cite the file and
   section they came from.
 - **Memory** that learns lasting facts you mention ("I'm vegetarian") without
   being asked. Each one is marked, visible and deletable.
-- **Skills:** reusable instructions (`/meeting-notes`, `/email-draft`, …).
-  Fourteen are included, and you can write or import your own.
+- **Skills:** reusable instructions (`/meeting-notes`, `/email-draft`,
+  `/countdown`, …). Fifteen are included, and you can write or import your own.
 - **Plug-ins** via the Model Context Protocol (MCP): paste a server's config
   and its tools become JARVIS's tools.
 - **While away:** give JARVIS a goal and a time span (30 minutes to a day).

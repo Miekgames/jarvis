@@ -40,6 +40,7 @@ const PANELS: { key: Exclude<Panel, null>; label: string; keywords?: string }[] 
   { key: 'voice', label: 'What it heard', keywords: 'voice wake word microphone heard' },
   { key: 'activity', label: 'Activity', keywords: 'log events' },
   { key: 'calendar', label: 'Calendar', keywords: 'events schedule diary' },
+  { key: 'countdowns', label: 'Countdowns', keywords: 'timer days until event release date news' },
   { key: 'automations', label: 'Automations', keywords: 'rules triggers' },
   { key: 'memory', label: 'Memory', keywords: 'remember facts' },
   { key: 'developer', label: 'Developer', keywords: 'code git workspace' },

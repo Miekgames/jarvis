@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from datetime import timedelta
 from typing import Any, AsyncIterator, Dict, List, Optional
@@ -472,7 +473,12 @@ class Orchestrator:
         # "/meeting-notes <notes>": run with that skill's instructions in
         # front of the model. For a small local model, choosing the skill
         # itself is the unreliable part, so the owner can simply say which.
+        skill_tools = self._skill_tools(message)
         message, extra_context = self._invoke_skill(message, extra_context)
+        # What the tools are chosen by: the request, and any tools the
+        # invoked skill works with. "/countdown the Olympics" reaches here
+        # as "the Olympics", which asks for no tool by itself.
+        tool_query = f"{message} {skill_tools}".strip()
         # Whatever is being talked in is what an unnamed caller -- a spoken
         # command -- should continue.
         self.active_conversation_id = conversation_id
@@ -526,7 +532,7 @@ class Orchestrator:
 
                 if stream and self.settings_store.get_cached("ai", {}).get("streaming", True):
                     async for event in self._stream_with_fallback(
-                        messages, system_prompt, tools, purpose, tool_query=message,
+                        messages, system_prompt, tools, purpose, tool_query=tool_query,
                         system_compact=compact_prompt):
                         if event["type"] == "text":
                             telemetry.token()
@@ -541,7 +547,7 @@ class Orchestrator:
                             completion = event["completion"]
                 else:
                     completion = await self._complete_with_fallback(
-                        messages, system_prompt, tools, purpose, tool_query=message,
+                        messages, system_prompt, tools, purpose, tool_query=tool_query,
                         system_compact=compact_prompt)
                     if completion.text:
                         telemetry.token()
@@ -1004,6 +1010,17 @@ class Orchestrator:
             (now_iso(), completion.provider, completion.model, tokens_in, tokens_out, cost, purpose,
              completion.latency_ms, 1),
         )
+
+    def _skill_tools(self, message: str) -> str:
+        """The tools named in the skill a "/name" message runs."""
+        text = (message or "").strip()
+        skills = self.registry.context.get("skills") if self.registry else None
+        if not text.startswith("/") or skills is None:
+            return ""
+        skill = skills.get(text[1:].partition(" ")[0])
+        if skill is None or not skill.enabled:
+            return ""
+        return " ".join(dict.fromkeys(re.findall(r"`([a-z]+(?:_[a-z]+)+)`", skill.body)))
 
     def _invoke_skill(self, message: str, extra_context: str):
         text = (message or "").strip()

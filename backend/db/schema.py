@@ -430,6 +430,7 @@ from .schema_v6 import V6  # noqa: E402
 from .schema_v7 import V7  # noqa: E402
 from .schema_v8 import V8  # noqa: E402
 from .schema_v9 import V9  # noqa: E402
+from .schema_v10 import V10  # noqa: E402
 
 MIGRATIONS: List[Tuple[int, str, List[str]]] = [
     (1, "initial schema", V1),
@@ -441,4 +442,5 @@ MIGRATIONS: List[Tuple[int, str, List[str]]] = [
     (7, "reply telemetry", V7),
     (8, "conversation summaries", V8),
     (9, "document index", V9),
+    (10, "countdowns", V10),
 ]

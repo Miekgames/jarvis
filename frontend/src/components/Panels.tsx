@@ -10,6 +10,7 @@ import { VoicePanel } from './panels/VoicePanel';
 import { AwayPanel } from './panels/AwayPanel';
 import { SkillsPanel } from './panels/SkillsPanel';
 import { PluginsPanel } from './panels/PluginsPanel';
+import { CountdownsPanel } from './panels/CountdownsPanel';
 import { DocumentsPanel } from './panels/DocumentsPanel';
 import { EmailPanel } from './panels/EmailPanel';
 import { WorkshopPanel } from './panels/WorkshopPanel';
@@ -58,6 +59,7 @@ export function Panels() {
     plugins: 'Plug-ins',
     documents: 'Documents',
     email: 'Email',
+    countdowns: 'Countdowns',
   };
 
   const bodies: Record<string, JSX.Element> = {
@@ -83,6 +85,7 @@ export function Panels() {
     plugins: <PluginsPanel />,
     documents: <DocumentsPanel />,
     email: <EmailPanel />,
+    countdowns: <CountdownsPanel />,
   };
 
   return (

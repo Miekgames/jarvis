@@ -130,7 +130,7 @@ export type Panel =
   | null | 'tasks' | 'settings' | 'history' | 'automations'
   | 'system' | 'memory' | 'calendar' | 'integrations' | 'activity' | 'notifications'
   | 'goals' | 'agents' | 'research' | 'developer' | 'selfedit' | 'voice'
-  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email';
+  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns';
 
 interface Store {
   // -- presence ------------------------------------------------------------
@@ -695,6 +695,10 @@ function handleEvent(event: BusEvent, set: any, get: () => Store) {
     case 'autonomy.progress':
       window.dispatchEvent(new CustomEvent('jarvis:autonomy',
                                            { detail: event.data }));
+      break;
+
+    case 'countdowns.changed':
+      window.dispatchEvent(new CustomEvent('jarvis:countdowns'));
       break;
 
     case 'business.progress':

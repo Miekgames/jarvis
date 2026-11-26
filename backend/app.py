@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import (
     ai_routes, autonomy_routes, business_routes, config_routes, core_routes, skills_routes, mcp_routes, document_routes,
-    email_routes, setup_routes,
+    email_routes, setup_routes, countdown_routes,
     data_routes,
     dev_routes, intelligence_routes, os_routes, personal_routes,
     work_routes,
@@ -101,7 +101,7 @@ def create_app() -> FastAPI:
     for module in (core_routes, ai_routes, work_routes, data_routes, config_routes,
                    intelligence_routes, os_routes, dev_routes,
                    personal_routes, business_routes, autonomy_routes, skills_routes, mcp_routes, document_routes,
-                   email_routes, setup_routes):
+                   email_routes, setup_routes, countdown_routes):
         app.include_router(module.router, prefix="/api")
 
     # ------------------------------------------------------------------

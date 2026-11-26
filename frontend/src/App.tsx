@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { BootSequence } from './components/BootSequence';
 import { Clock } from './components/Clock';
+import { Countdowns } from './components/Countdowns';
 import { CommandBar } from './components/CommandBar';
 import { Confirmation } from './components/Confirmation';
 import { Conversation } from './components/Conversation';
@@ -92,6 +93,7 @@ export default function App() {
           <HudFrame />
           <StatusRail />
           <Clock />
+          <Countdowns />
           {wakeMessage && <div className="greeting">{wakeMessage}</div>}
           <Conversation />
           <Suggestions />

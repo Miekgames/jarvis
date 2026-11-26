@@ -267,6 +267,17 @@ class ToolRegistry:
             except Exception:
                 logger.debug("skill matching failed", exc_info=True)
 
+        # Named outright: a skill being run lists the tools it works with.
+        for word in re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", query or ""):
+            if word in self._tools and word not in wanted:
+                wanted.append(word)
+
+        # "How many days until..." is nearly all scaffolding words.
+        if _COUNTDOWN.search(query or ""):
+            wanted += ["add_countdown", "list_countdowns", "remove_countdown"]
+        if _HOW_LONG.search(query or ""):
+            wanted.append("how_long_until")
+
         autonomy = context.get("autonomy") if context is not None else None
         if autonomy is not None and getattr(autonomy, "current", None) is not None \
                 and _ARRIVAL.search(query or ""):
@@ -557,6 +568,10 @@ _SCAFFOLDING = frozenset("""
 # every turn rather than left to win a keyword contest they cannot win: a
 # question about the outside world rarely contains the word "search".
 _ALWAYS_OFFERED = ("web_search", "read_webpage")
+
+_COUNTDOWN = re.compile(r"\bcount(?:ing)?\s?-?down", re.I)
+_HOW_LONG = re.compile(r"\bhow\s+(?:long|much\s+longer|many\s+(?:days|weeks|months|sleeps))\b"
+                       r".*\b(?:until|till|til|before|left)\b", re.I)
 
 # "I'm back", "im home", "I am back", "I've returned" -- said on walking in.
 _ARRIVAL = re.compile(

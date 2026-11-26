@@ -413,6 +413,11 @@ class Container:
         from .integrations.email_account import EmailAccount
         self.services["email"] = EmailAccount(Path(self.settings.DATA_DIR), activity, audit)
 
+        # Countdowns on the main screen, and the news behind each.
+        from .services.countdowns import Countdowns
+        self.services["countdowns"] = Countdowns(
+            db, web=self.services.get("web"), activity=activity, settings=self.settings)
+
         # MCP plug-ins: connected in the background, so a slow or broken
         # server never holds up start-up.
         from .integrations.mcp_manager import MCPManager
