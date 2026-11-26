@@ -41,6 +41,7 @@ const PANELS: { key: Exclude<Panel, null>; label: string; keywords?: string }[] 
   { key: 'activity', label: 'Activity', keywords: 'log events' },
   { key: 'calendar', label: 'Calendar', keywords: 'events schedule diary' },
   { key: 'countdowns', label: 'Countdowns', keywords: 'timer days until event release date news' },
+  { key: 'everyday', label: 'Everyday lookups', keywords: 'convert units currency exchange time zone world clock wikipedia define dictionary dice coin random' },
   { key: 'automations', label: 'Automations', keywords: 'rules triggers' },
   { key: 'memory', label: 'Memory', keywords: 'remember facts' },
   { key: 'developer', label: 'Developer', keywords: 'code git workspace' },

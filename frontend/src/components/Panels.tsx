@@ -11,6 +11,7 @@ import { AwayPanel } from './panels/AwayPanel';
 import { SkillsPanel } from './panels/SkillsPanel';
 import { PluginsPanel } from './panels/PluginsPanel';
 import { CountdownsPanel } from './panels/CountdownsPanel';
+import { EverydayPanel } from './panels/EverydayPanel';
 import { DocumentsPanel } from './panels/DocumentsPanel';
 import { EmailPanel } from './panels/EmailPanel';
 import { WorkshopPanel } from './panels/WorkshopPanel';
@@ -60,6 +61,7 @@ export function Panels() {
     documents: 'Documents',
     email: 'Email',
     countdowns: 'Countdowns',
+    everyday: 'Everyday lookups',
   };
 
   const bodies: Record<string, JSX.Element> = {
@@ -86,6 +88,7 @@ export function Panels() {
     documents: <DocumentsPanel />,
     email: <EmailPanel />,
     countdowns: <CountdownsPanel />,
+    everyday: <EverydayPanel />,
   };
 
   return (

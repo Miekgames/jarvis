@@ -124,6 +124,13 @@ trusted:
   by hand (date and time), or just ask: "countdown to the World Cup". Dates
   come from you, the calendar, or several websites that agree, never from the
   model's memory; when sources disagree, JARVIS asks you.
+- **Everyday lookups:** convert units ("70 F in C", "5 miles in km") and
+  money ("50 dollars in euros", at the European Central Bank's published
+  rate), the time anywhere ("time in Tokyo"), a Wikipedia summary, a word's
+  definition (Wiktionary), and coin flips, dice and random picks. Ask in chat
+  or use the Everyday panel. Every number is computed or looked up, never
+  recalled by the model. Currency, Wikipedia and definitions need "Open web
+  pages", which is on by default.
 - **Your documents:** add folders and ask questions. Answers cite the file and
   section they came from.
 - **Memory** that learns lasting facts you mention ("I'm vegetarian") without

@@ -130,7 +130,7 @@ export type Panel =
   | null | 'tasks' | 'settings' | 'history' | 'automations'
   | 'system' | 'memory' | 'calendar' | 'integrations' | 'activity' | 'notifications'
   | 'goals' | 'agents' | 'research' | 'developer' | 'selfedit' | 'voice'
-  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns';
+  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns' | 'everyday';
 
 interface Store {
   // -- presence ------------------------------------------------------------

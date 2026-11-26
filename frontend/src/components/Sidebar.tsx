@@ -75,6 +75,7 @@ const GROUPS: Group[] = [
       { key: 'goals', label: 'Goals' },
       { key: 'calendar', label: 'Calendar' },
       { key: 'countdowns', label: 'Countdowns' },
+      { key: 'everyday', label: 'Everyday' },
       { key: 'automations', label: 'Automations' },
     ],
   },

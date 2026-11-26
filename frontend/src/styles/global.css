@@ -3000,3 +3000,14 @@ a { color: var(--accent); }
   .countdown__here { font-size: 0.8rem; }
   .newsbox { width: 100%; max-height: 60vh; }
 }
+
+/* Everyday lookups panel */
+.ev-row { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.ev-row .text-input { flex: 1 1 6rem; min-width: 0; }
+.ev-row .ev-num { flex: 0 0 4.5rem; }
+.ev-row .ev-code { flex: 0 0 4.5rem; }
+.ev-to { color: var(--ink-ghost); font-size: 0.8rem; }
+.ev-answer { margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-left: 2px solid var(--accent);
+  background: rgba(90, 210, 255, 0.06); font-size: 0.85rem; line-height: 1.45; }
+.ev-answer p { margin: 0 0 0.25rem; }
+.ev-answer a { word-break: break-all; }

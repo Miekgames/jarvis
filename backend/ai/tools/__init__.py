@@ -15,6 +15,7 @@ def build_registry(services: Dict[str, Any]) -> ToolRegistry:
         countdown_tools,
         document_tools,
         email_tools,
+        everyday_tools,
         file_tools,
         integration_tools,
         intelligence_tools,
@@ -32,6 +33,6 @@ def build_registry(services: Dict[str, Any]) -> ToolRegistry:
     for module in (system_tools, file_tools, web_tools, work_tools, personal_tools,
                    integration_tools, intelligence_tools, os_tools, selfedit_tools,
                    workspace_tools, business_tools, autonomy_tools, skill_tools,
-                   document_tools, email_tools, countdown_tools):
+                   document_tools, email_tools, countdown_tools, everyday_tools):
         module.register(registry)
     return registry

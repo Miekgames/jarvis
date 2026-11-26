@@ -191,6 +191,8 @@ class Container:
             "notifications": notifications, "files": files, "web": web,
             "weather": weather, "calendar": calendar, "memory": memory,
         })
+        from .services.quickfacts import QuickFacts
+        self.services["quickfacts"] = QuickFacts()
 
         # ---- AI ------------------------------------------------------
         registry = build_registry(self.services)
@@ -610,7 +612,7 @@ class Container:
         hub.stop()
         await bus.drain(timeout=3.0)
 
-        for name in ("orchestrator", "web", "weather", "integrations"):
+        for name in ("orchestrator", "web", "weather", "integrations", "quickfacts"):
             service = self.get(name)
             if service is not None:
                 try:
