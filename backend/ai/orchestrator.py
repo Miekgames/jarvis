@@ -415,6 +415,47 @@ class Orchestrator:
 
         return await self.ensure_conversation(None)
 
+    async def timeline(self, before: Optional[str] = None, limit: int = 30,
+                       exclude: Optional[List[str]] = None) -> Dict[str, Any]:
+        """What was said on screen and by voice, newest last, a page at a time.
+
+        For scrolling back on the phone or the computer: across conversations,
+        so yesterday is still there above today. Only what was said -- not the
+        tool calls and their results stored between -- and never the chats in
+        `exclude` (Discord's own threads).
+        """
+        exclude = [c for c in (exclude or []) if c]
+        where = ["c.archived = 0", "m.text != ''", "m.role IN ('user', 'assistant')",
+                 # a reply's tool round ("Let me check...") is not the answer
+                 "NOT (m.role = 'assistant' AND m.blocks LIKE '%\"tool_use\"%')"]
+        params: List[Any] = []
+        if before:
+            where.append("m.created_at < ?")
+            params.append(before)
+        if exclude:
+            where.append(f"m.conversation_id NOT IN ({','.join('?' * len(exclude))})")
+            params += exclude
+        rows = await self.db.fetch_all(
+            "SELECT m.id, m.conversation_id, m.role, m.text, m.created_at FROM messages m"
+            " JOIN conversations c ON c.id = m.conversation_id"
+            f" WHERE {' AND '.join(where)} ORDER BY m.created_at DESC, m.rowid DESC LIMIT ?",
+            (*params, int(limit) + 1),
+        )
+        more = len(rows) > int(limit)
+        return {"messages": list(reversed(rows[:int(limit)])), "more": more}
+
+    async def recent_conversation(self, exclude: Optional[List[str]] = None,
+                                  idle_minutes: int = 180) -> Optional[str]:
+        """The thread a screen that just opened should carry on, if one is
+        still going (the same window spoken commands use); else None."""
+        exclude = [c for c in (exclude or []) if c]
+        cutoff = (utcnow() - timedelta(minutes=int(idle_minutes))).isoformat()
+        skip = f" AND id NOT IN ({','.join('?' * len(exclude))})" if exclude else ""
+        row = await self.db.fetch_one(
+            "SELECT id FROM conversations WHERE archived = 0 AND updated_at > ?" + skip +
+            " ORDER BY updated_at DESC LIMIT 1", (cutoff, *exclude))
+        return row["id"] if row else None
+
     async def ensure_conversation(self, conversation_id: Optional[str] = None, project_id: Optional[str] = None) -> str:
         if conversation_id:
             existing = await self.db.fetch_one("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
@@ -581,6 +622,8 @@ class Orchestrator:
             done = await self._plain_research(message, conversation_id)
         if done is None:
             done = await self._plain_discord(message, conversation_id)
+        if done is None:
+            done = await self._plain_checklist(message, conversation_id)
         if done is not None:
             await self._save_message(conversation_id, "assistant", done,
                                      [{"type": "text", "text": done}])
@@ -1212,6 +1255,18 @@ class Orchestrator:
         if messages is not None:
             messages += [{"role": "assistant", "content": blocks},
                          {"role": "user", "content": results}]
+
+    async def _plain_checklist(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
+        """"Show me my checklists", "add milk to my grocery list", "check off
+        eggs": done at once, through the tool runner."""
+        from .tools.checklist_tools import checklist_said
+
+        found = checklist_said(message)
+        if found is None or self.registry is None or self.registry.get(found[0]) is None:
+            return None
+        tool, arguments = found
+        result = await self.registry.dispatch(tool, arguments, conversation_id=conversation_id)
+        return result.message or ("Done." if result.ok else "That couldn't be done.")
 
     async def _plain_discord(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
         """"Pair Discord", "turn off Discord": done at once, through the tool runner."""

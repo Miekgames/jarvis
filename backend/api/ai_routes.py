@@ -128,6 +128,25 @@ async def conversations(limit: int = Query(30, le=200), user: Dict[str, Any] = D
     return {"conversations": rows}
 
 
+@router.get("/ai/timeline", tags=["ai"])
+async def timeline(before: Optional[str] = None, limit: int = Query(30, ge=1, le=100),
+                   user: Dict[str, Any] = Depends(current_user)):
+    """Earlier messages for the screen to scroll back through, a page at a time.
+
+    The first page also names the conversation still going (if any), so a
+    phone that just opened carries on the same thread as the computer.
+    """
+    orchestrator = container.get("orchestrator")
+    discord = container.get("discord")
+    exclude: List[str] = []
+    if discord is not None:
+        exclude = [c for c in ((await discord.config()).get("conversations") or {}).values() if c]
+    page = await orchestrator.timeline(before, limit, exclude)
+    if not before:
+        page["current"] = await orchestrator.recent_conversation(exclude)
+    return page
+
+
 @router.get("/ai/conversations/{conversation_id}", tags=["ai"])
 async def conversation(conversation_id: str, user: Dict[str, Any] = Depends(current_user)):
     orchestrator = container.get("orchestrator")

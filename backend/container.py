@@ -415,6 +415,10 @@ class Container:
         from .integrations.email_account import EmailAccount
         self.services["email"] = EmailAccount(Path(self.settings.DATA_DIR), activity, audit)
 
+        # Checklists: grocery lists, workouts -- things to tick off.
+        from .services.checklists import Checklists
+        self.services["checklists"] = Checklists(db)
+
         # Reminders: scheduled notifications, also shown by Windows itself.
         from .services.reminders import Reminders
         self.services["reminders"] = Reminders(self.services["scheduler"])

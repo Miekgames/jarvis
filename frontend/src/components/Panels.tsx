@@ -16,6 +16,7 @@ import { EverydayPanel } from './panels/EverydayPanel';
 import { DocumentsPanel } from './panels/DocumentsPanel';
 import { EmailPanel } from './panels/EmailPanel';
 import { DiscordPanel } from './panels/DiscordPanel';
+import { ChecklistsPanel } from './panels/ChecklistsPanel';
 import { WorkshopPanel } from './panels/WorkshopPanel';
 import { AgentsPanel, GoalsPanel, ResearchPanel, SelfEditPanel } from './panels/WorkPanels';
 import { useStore } from '../state/store';
@@ -66,6 +67,7 @@ export function Panels() {
     reminders: 'Reminders',
     everyday: 'Everyday lookups',
     discord: 'Discord',
+    checklists: 'Checklists',
   };
 
   const bodies: Record<string, JSX.Element> = {
@@ -95,6 +97,7 @@ export function Panels() {
     reminders: <RemindersPanel />,
     everyday: <EverydayPanel />,
     discord: <DiscordPanel />,
+    checklists: <ChecklistsPanel />,
   };
 
   return (

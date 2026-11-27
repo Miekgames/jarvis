@@ -57,6 +57,17 @@ SECTIONS: Tuple[Section, ...] = (
         Line('what reminders do I have?', 'the list', 'list_reminders'),
         Line("cancel the 7 o'clock reminder", 'cancels one', 'cancel_reminder'),
     )),
+    Section('checklists', 'Checklists', ('checklist', 'checklists', 'lists', 'list', 'grocery', 'shopping', 'workout'),
+            'grocery lists, workouts, anything to tick off', (
+        Line('show me my checklists', 'opens them: pick one, tap to check and uncheck', 'show_checklists'),
+        Line('make a grocery list: eggs, milk and bread', 'a new checklist', 'make_checklist'),
+        Line('add butter to my grocery list', 'adds items', 'add_to_checklist'),
+        Line('check off eggs', 'ticks one off (“uncheck eggs” to undo)', 'check_off'),
+        Line("what's on my grocery list?", 'reads it out', 'show_checklists'),
+        Line('reset my workout list', 'unticks everything to use it again', 'reset_checklist'),
+        Line('clear the checked items from my grocery list', 'removes what you got', 'reset_checklist'),
+        Line('delete my packing list', 'deletes a whole list (asks first)', 'delete_checklist'),
+    )),
     Section('countdowns', 'Countdowns', ('countdown', 'countdowns', 'how long'),
             'countdowns on the main screen, how long until anything', (
         Line('countdown to the World Cup', 'a countdown on the main screen', 'add_countdown'),

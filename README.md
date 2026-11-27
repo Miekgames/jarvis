@@ -168,6 +168,13 @@ off in Permissions says which switch turns it on.
   disagree), instead of guessing or telling you to check a website. A short
   follow-up ("and the over/under?") is looked up too. The articles it read
   are listed under the answer as links, so you can check it.
+- **Checklists:** a grocery list, a workout, anything to tick off. "Make a
+  grocery list: eggs, milk and bread", "add butter to my grocery list",
+  "check off eggs", "reset my workout list". "Show me my checklists" opens
+  them: pick one and tap items to check and uncheck. Works on Discord too.
+- **Scroll back:** earlier messages are there when JARVIS opens, on the
+  computer or the phone; keep scrolling up and older ones load, back through
+  earlier days.
 - **Discord:** chat with JARVIS from Discord through your own bot. Make a bot
   in the [Developer Portal](https://discord.com/developers/applications)
   (New Application → Bot → Reset Token), paste the token into the Discord

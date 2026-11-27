@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { Markdown } from './Markdown';
 import { speakable, voice } from '../lib/voice';
@@ -18,9 +18,8 @@ import { useStore, type Utterance } from '../state/store';
  * turning this into a chat window, because the fade is the design.
  */
 
-/** How many turns stay on the stage, before and after asking for more. */
+/** How many turns are on the stage before you scroll back. */
 const SHALLOW = 6;
-const DEEP = 20;
 
 /** Below this, a wait is not worth counting out loud. */
 const QUIET_SECONDS = 3;
@@ -31,7 +30,12 @@ export function Conversation() {
   const notify = useStore((s) => s.notify);
   const settings = useStore((s) => s.settings);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [deep, setDeep] = useState(false);
+  const historyMore = useStore((s) => s.historyMore);
+  const loadEarlier = useStore((s) => s.loadEarlier);
+  // How many turns are on the stage. Scrolling up to the top shows more,
+  // then fetches earlier ones from before this screen opened.
+  const [shown, setShown] = useState(SHALLOW);
+  const deep = shown > SHALLOW;
   const [copied, setCopied] = useState<string | null>(null);
   // Which reply is being read aloud on request, if any.
   const [reading, setReading] = useState<string | null>(null);
@@ -44,13 +48,15 @@ export function Conversation() {
   // yanking you back to the bottom. A new turn of your own always returns
   // you there.
   const pinnedRef = useRef(true);
-  const lastCountRef = useRef(0);
+  const lastNewestRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const newest = utterances[utterances.length - 1];
-    const youSpoke = utterances.length > lastCountRef.current && newest?.role === 'user';
-    lastCountRef.current = utterances.length;
+    // By the newest message, not the count: earlier ones loading in above
+    // must not throw you back to the bottom.
+    const youSpoke = newest?.id !== lastNewestRef.current && newest?.role === 'user';
+    lastNewestRef.current = newest?.id;
     if (pinnedRef.current || youSpoke) {
       container.scrollTop = container.scrollHeight;
       pinnedRef.current = true;
@@ -66,7 +72,41 @@ export function Conversation() {
     pinnedRef.current =
       container.scrollHeight - container.scrollTop - container.clientHeight < 60;
     setScrolledUp(!pinnedRef.current);
+    if (!pinnedRef.current && container.scrollTop < 80) void showEarlier();
   };
+
+  // Earlier turns appear above what you're reading: keep it where it was.
+  const anchorRef = useRef<number | null>(null);
+  const loadingRef = useRef(false);
+  const showEarlier = async () => {
+    const container = containerRef.current;
+    if (loadingRef.current || !container) return;
+    const onStage = Math.min(shown, utterances.length);
+    if (onStage >= utterances.length && !historyMore) return;
+    loadingRef.current = true;
+    anchorRef.current = container.scrollHeight - container.scrollTop;
+    try {
+      if (onStage < utterances.length) {
+        setShown(onStage + 20);
+      } else {
+        const added = await loadEarlier();
+        setShown(onStage + added);
+        if (!added) anchorRef.current = null;
+      }
+    } catch {
+      anchorRef.current = null;
+    } finally {
+      loadingRef.current = false;
+    }
+  };
+  const firstShownId = utterances[Math.max(0, utterances.length - shown)]?.id;
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (container && anchorRef.current !== null) {
+      container.scrollTop = container.scrollHeight - anchorRef.current;
+      anchorRef.current = null;
+    }
+  }, [firstShownId]);
 
   const toLatest = () => {
     const container = containerRef.current;
@@ -87,9 +127,8 @@ export function Conversation() {
     </button>
   );
 
-  const depth = deep ? DEEP : SHALLOW;
-  // Only the last few turns stay on the stage; the rest fade out entirely.
-  const visible = utterances.slice(-depth);
+  // Only the last few turns stay on the stage until you scroll back.
+  const visible = utterances.slice(-shown);
   const hidden = utterances.length - visible.length;
 
   /** The question a reply was answering: the nearest user turn before it. */
@@ -153,13 +192,13 @@ export function Conversation() {
     {latestButton}
     <div className="conversation" ref={containerRef} aria-live="polite" aria-atomic="false"
          onScroll={onScroll}>
-      {hidden > 0 && (
-        <button className="conversation__more" onClick={() => setDeep(true)}>
-          {hidden} earlier turn{hidden === 1 ? '' : 's'}
+      {(hidden > 0 || historyMore) && (
+        <button className="conversation__more" onClick={() => void showEarlier()}>
+          earlier messages
         </button>
       )}
       {deep && (
-        <button className="conversation__more" onClick={() => setDeep(false)}>
+        <button className="conversation__more" onClick={() => setShown(SHALLOW)}>
           show less
         </button>
       )}
@@ -169,7 +208,9 @@ export function Conversation() {
         // Fade more gently when showing more, or twenty turns would end in
         // a wall of invisible text.
         const step = deep ? 0.055 : 0.22;
-        const opacity = utterance.streaming ? 1 : Math.max(0.16, 1 - age * step);
+        // Scrolled back to read: everything at full strength. At the bottom,
+        // the older turns fade toward the top as before.
+        const opacity = utterance.streaming || scrolledUp ? 1 : Math.max(0.16, 1 - age * step);
 
         return (
           <div

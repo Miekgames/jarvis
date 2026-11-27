@@ -70,6 +70,7 @@ const GROUPS: Group[] = [
     title: 'Plan',
     entries: [
       { key: 'reminders', label: 'Reminders', say: 'remind me at 7pm to call Dad' },
+      { key: 'checklists', label: 'Checklists', say: 'show me my checklists' },
       { key: 'countdowns', label: 'Countdowns', say: 'countdown to the World Cup 2030' },
       { key: 'calendar', label: 'Calendar', say: 'what’s on my calendar today?' },
       { key: 'goals', label: 'Goals', say: 'how are my goals going?' },

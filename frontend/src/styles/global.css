@@ -3100,3 +3100,36 @@ a { color: var(--accent); }
 .utterance__sources a:hover, .utterance__sources a:focus-visible {
   border-bottom-color: var(--accent);
 }
+
+/* ------------------------------------------------------------------------
+   Checklists: big, plain rows to tap, made for a phone in a shop.
+   ------------------------------------------------------------------------ */
+.checklist__head, .checklist__pick {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem;
+}
+.checklist__head { margin-top: 0.6rem; }
+.checklist__title { color: var(--ink); font-size: 1rem; }
+.checklist__count { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; color: var(--ink-ghost); }
+.checklist__pick {
+  width: 100%; min-height: 48px; padding: 0.6rem 0.2rem; background: none; border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06); color: inherit; text-align: left; cursor: pointer;
+}
+.checklist__pick:hover .checklist__title, .checklist__pick:focus-visible .checklist__title { color: var(--accent); }
+.checklist__row { display: flex; align-items: center; gap: 0.4rem; }
+.checklist__item {
+  flex: 1; display: flex; align-items: center; gap: 0.75rem; min-height: 46px;
+  padding: 0.4rem 0.2rem; background: none; border: 0; color: var(--ink); text-align: left;
+  font-size: 0.98rem; cursor: pointer;
+}
+.checklist__box {
+  flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 60%, transparent); color: #04070d;
+  font-size: 0.8rem; font-weight: 700; transition: background 160ms ease;
+}
+.checklist__item--done .checklist__box { background: var(--accent); border-color: var(--accent); }
+.checklist__item--done .checklist__text { color: var(--ink-ghost); text-decoration: line-through; }
+.checklist__remove { opacity: 0.5; font-size: 1rem; min-width: 36px; min-height: 36px; }
+.checklist__remove:hover { opacity: 1; }
+.checklist__add { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+.checklist__add .text-input { flex: 1; min-width: 0; }
+.checklist__actions { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; }

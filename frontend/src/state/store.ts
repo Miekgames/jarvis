@@ -71,6 +71,16 @@ export interface Utterance {
   error?: boolean;
   /** Measured cost of producing this reply (JARVIS turns only). */
   telemetry?: import('../lib/api').Telemetry;
+  /** When it was saved, exactly as the server has it: where paging back starts. */
+  createdAt?: string;
+}
+
+/** A message from /ai/timeline: what was said earlier, on screen or by voice. */
+interface PastMessage { id: string; conversation_id: string; role: string; text: string; created_at: string }
+
+function fromPast(m: PastMessage): Utterance {
+  return { id: m.id, role: m.role === 'assistant' ? 'jarvis' : 'user', text: m.text,
+           ts: Date.parse(m.created_at) || 0, createdAt: m.created_at };
 }
 
 export interface TaskRecord {
@@ -133,7 +143,7 @@ export type Panel =
   | 'system' | 'memory' | 'calendar' | 'integrations' | 'activity' | 'notifications'
   | 'goals' | 'agents' | 'research' | 'developer' | 'selfedit' | 'voice'
   | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns' | 'everyday' | 'reminders'
-  | 'discord';
+  | 'discord' | 'checklists';
 
 interface Store {
   // -- presence ------------------------------------------------------------
@@ -148,6 +158,10 @@ interface Store {
 
   // -- conversation --------------------------------------------------------
   utterances: Utterance[];
+  /** Whether there are earlier messages still to load when scrolling back. */
+  historyMore: boolean;
+  /** Load the page of messages before the earliest on screen. */
+  loadEarlier: () => Promise<number>;
   conversationId: string | null;
   busy: boolean;
 
@@ -177,6 +191,10 @@ interface Store {
   agents: { id: string; label: string; colour: string; activity: number }[];
   /** Skills in use right now; the screen fades to the shown one's colour. */
   activeSkills: ActiveSkill[];
+  /** Bumped whenever a checklist changes anywhere, so the panel reloads. */
+  checklistsVersion: number;
+  /** The checklist JARVIS was asked to show ("what's on my grocery list?"). */
+  checklistFocus: { id: string | null; at: number } | null;
 
   // -- ui ------------------------------------------------------------------
   panel: Panel;
@@ -240,7 +258,8 @@ interface Store {
  *  about twelve minutes, which is as much as a sparkline can usefully say. */
 const METRIC_HISTORY = 240;
 
-const MAX_UTTERANCES = 60;
+// Enough to scroll back a good way; older pages are fetched again on demand.
+const MAX_UTTERANCES = 500;
 
 /**
  * Whether the event-bus subscription has been made. Module scope, not store
@@ -318,6 +337,7 @@ export const useStore = create<Store>((set, get) => ({
   wakeMessage: '',
 
   utterances: [],
+  historyMore: false,
   conversationId: null,
   busy: false,
 
@@ -334,6 +354,8 @@ export const useStore = create<Store>((set, get) => ({
   confidence: 0.8,
   agents: [],
   activeSkills: [],
+  checklistsVersion: 0,
+  checklistFocus: null,
 
   panel: null,
   toast: null,
@@ -388,6 +410,16 @@ export const useStore = create<Store>((set, get) => ({
         get().loadSettings(),
         api.get<{ active: ActiveSkill[] }>('/skills/active')
           .then((r) => set({ activeSkills: r.active ?? [] }))
+          .catch(() => undefined),
+        // What was said before this screen opened, to scroll back through,
+        // and the conversation still going, so it carries on here.
+        api.get<{ messages: PastMessage[]; more: boolean; current?: string | null }>('/ai/timeline?limit=30')
+          .then((page) => set((s) => {
+            const known = new Set(s.utterances.map((u) => u.id));
+            const past = (page.messages ?? []).filter((m) => !known.has(m.id)).map(fromPast);
+            return { utterances: [...past, ...s.utterances], historyMore: !!page.more,
+                     conversationId: s.conversationId ?? page.current ?? null };
+          }))
           .catch(() => undefined),
       ]);
 
@@ -569,7 +601,18 @@ export const useStore = create<Store>((set, get) => ({
                     detail: 'Wake word is off.' },
     }));
   },
-  clearConversation: () => set({ utterances: [], conversationId: null }),
+  clearConversation: () => set({ utterances: [], conversationId: null, historyMore: false }),
+
+  loadEarlier: async () => {
+    const oldest = get().utterances.find((u) => u.createdAt);
+    if (!oldest?.createdAt || !get().historyMore) return 0;
+    const page = await api.get<{ messages: PastMessage[]; more: boolean }>(
+      `/ai/timeline?limit=30&before=${encodeURIComponent(oldest.createdAt)}`);
+    const known = new Set(get().utterances.map((u) => u.id));
+    const earlier = (page.messages ?? []).filter((m) => !known.has(m.id)).map(fromPast);
+    set((s) => ({ utterances: [...earlier, ...s.utterances], historyMore: !!page.more }));
+    return earlier.length;
+  },
 
   // ======================================================================
   async sleep() {
@@ -664,6 +707,15 @@ function handleEvent(event: BusEvent, set: any, get: () => Store) {
     // Which skills are in use: the screen fades to the shown one's colour.
     case 'skills.active':
       set({ activeSkills: (event.data.active ?? []) as ActiveSkill[] });
+      break;
+
+    case 'checklists.changed':
+      set({ checklistsVersion: get().checklistsVersion + 1 });
+      break;
+
+    case 'checklists.show':
+      // A fresh object each time: "show me my checklists" again goes back to the menu.
+      set({ checklistFocus: { id: (event.data.id as string) || null, at: Date.now() } });
       break;
 
     case 'task.created':
