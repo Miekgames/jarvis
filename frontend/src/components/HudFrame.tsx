@@ -157,7 +157,7 @@ export function HudFrame() {
         <path d="M 9 99.5 L 0.5 99.5 L 0.5 91" />
         {/* The bottom-left corner doubles as a progress bar for running work
             (research and other tasks): the real reported progress, filling
-            from the corner outward. Nothing running: just the bracket. */}
+            down the side and then along the bottom. Nothing running: just the bracket. */}
         {progress !== null && (
           <>
             <path d="M 0.5 70 L 0.5 99.5 L 30 99.5" style={{ opacity: 0.18 }} />
