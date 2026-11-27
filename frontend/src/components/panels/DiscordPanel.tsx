@@ -20,6 +20,10 @@ interface Status {
   invite_url: string;
   servers: boolean;
   notify: boolean;
+  call_reminders: boolean;
+  in_call: boolean;
+  call_pending: boolean;
+  call_channel: string;
   server_count: number;
   owners: { id: string; name: string }[];
   pairing: boolean;
@@ -146,6 +150,30 @@ export function DiscordPanel() {
                         onClick={() => void run(() => api.post('/discord/notify', { on: !status.notify }))} />
                 <span>Send my notifications here</span>
               </label>
+              <label className="plugin__switch"
+                     title="When a reminder goes off, the bot DMs you to join voice, then says it.">
+                <button className={`switch ${status.call_reminders ? 'switch--on' : ''}`} role="switch"
+                        aria-checked={status.call_reminders} disabled={busy || status.owners.length === 0}
+                        onClick={() => void run(() => api.post('/discord/call_reminders', { on: !status.call_reminders }))} />
+                <span>Call me for reminders</span>
+              </label>
+            </div>
+            <div className="mail-foot">
+              {status.in_call || status.call_pending ? (
+                <>
+                  <span className="control__help">
+                    {status.in_call ? `On a call in ${status.call_channel}.` : 'Calling… waiting for you to join voice.'}
+                  </span>
+                  <button className="btn" disabled={busy}
+                          onClick={() => void run(() => api.post('/discord/hangup', {}))}>Hang up</button>
+                </>
+              ) : (
+                <button className="btn" disabled={busy || !status.connected || status.owners.length === 0}
+                        title="DMs you a link to a voice channel, then talks to you once you join"
+                        onClick={() => void run(() => api.post('/discord/call', { say: '' }))}>
+                  Call me now
+                </button>
+              )}
             </div>
             {status.connected && status.server_count === 0 && (
               <div className="control__help">

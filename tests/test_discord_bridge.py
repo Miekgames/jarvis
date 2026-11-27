@@ -295,3 +295,57 @@ async def test_notifications_reach_discord_only_when_asked(bridge):
 ])
 def test_saying_notifications(said, expected):
     assert discord_said(said) == expected
+
+
+# ---------------------------------------------------------------------------
+class Attachment:
+    def __init__(self, content_type="audio/ogg", size=20_000, filename="voice-message.ogg"):
+        self.content_type, self.size, self.filename = content_type, size, filename
+
+    async def read(self):
+        return b"OggS..."
+
+
+class Speech:
+    def __init__(self, words="what's on my grocery list"):
+        self.words = words
+
+    async def transcribe(self, data, filename="audio.webm"):
+        return {"text": self.words, "duration": 2.0}
+
+
+async def test_a_voice_message_is_heard_and_answered(bridge):
+    await _pair(bridge)
+    bridge.calls.tts = Speech()
+    message = Message("")
+    message.attachments = [Attachment()]
+    await bridge.handle(message)
+    assert bridge.orchestrator.asked[-1][0] == "what's on my grocery list"
+    assert message.replies[0].startswith("🎙️ *“what's on my grocery list”*")
+    assert "Hello from JARVIS." in message.replies[0]
+
+
+async def test_a_voice_message_with_no_words(bridge):
+    await _pair(bridge)
+    bridge.calls.tts = Speech(words="")
+    message = Message("")
+    message.attachments = [Attachment()]
+    await bridge.handle(message)
+    assert bridge.orchestrator.asked == [] and "couldn't hear any words" in message.replies[0]
+
+
+async def test_a_stranger_voice_message_is_not_transcribed(bridge):
+    bridge.calls.tts = Speech()
+    message = Message("", author_id=7)
+    message.attachments = [Attachment()]
+    await bridge.handle(message)
+    assert bridge.orchestrator.asked == [] and "only answer the person" in message.replies[0]
+
+
+async def test_an_image_is_not_a_voice_message(bridge):
+    await _pair(bridge)
+    bridge.calls.tts = Speech()
+    message = Message("")
+    message.attachments = [Attachment(content_type="image/png")]
+    await bridge.handle(message)
+    assert bridge.orchestrator.asked == [] and message.replies == []

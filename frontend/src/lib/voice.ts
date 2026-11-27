@@ -597,6 +597,9 @@ export function speakable(text: string): string {
     .replace(/[*_#>]/g, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/https?:\/\/\S+/g, 'a link')
+    // Emojis are for reading: spoken, "✅" becomes "check mark button".
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{FE0F}\u{200D}\u{20E3}]+/gu, ' ')
     .replace(/\s+/g, ' ')
+    .replace(/\s+([.,!?;:])/g, '$1')
     .trim();
 }

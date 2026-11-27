@@ -48,6 +48,14 @@ Operating rules:
 """
 
 
+def _emoji_rule(personality: Dict[str, Any]) -> str:
+    """Emojis where they add meaning ("use emojis" / "stop using emojis")."""
+    if personality.get("emojis", True) is False:
+        return "- Don't use emojis."
+    return ("- Use an emoji now and then where it adds meaning or warmth (✅ done, 🛒 groceries, "
+            "📅 a date, ⚠️ a warning): one or two in a reply at most, never in code or file paths.")
+
+
 async def build_compact_prompt(
     settings,
     personality: Dict[str, Any],
@@ -84,6 +92,7 @@ async def build_compact_prompt(
         "units. Do not convert, add up, or combine numbers from different fields. Read "
         "each field name carefully: disk_free_gb is free space, mem_total_gb is memory.",
         "- Keep answers to one or two sentences.",
+        _emoji_rule(personality),
     ]
 
     context = await _live_context(db, settings_store, settings)
@@ -121,7 +130,7 @@ async def build_system_prompt(
     )
 
     sections.append(
-        f"Voice and manner:\n- {tone}\n- {length}\n"
+        f"Voice and manner:\n- {tone}\n- {length}\n{_emoji_rule(personality)}\n"
         f"- Formality: {formality}. Humour level: {humour:.1f} out of 1.0."
         + (f"\n- Address the user as {owner} when it reads naturally, not in every sentence."
            if owner != "the user" else "")

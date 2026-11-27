@@ -32,15 +32,17 @@ from typing import Any, Dict, List, Optional
 
 from ..core import secrets
 from ..core.events import Events, bus
+from .discord_voice import INVITE_PERMISSIONS
 
 logger = logging.getLogger("integrations.discord")
 
 SECTION = "discord"
 DEFAULTS: Dict[str, Any] = {"enabled": False, "token": "", "owners": [], "servers": False,
-                            "notify": False, "conversations": {}}
+                            "notify": False, "call_reminders": False, "conversations": {}}
 PAIR_MINUTES = 10
 LIMIT = 1900                         # Discord's cap is 2000 characters a message
 STRANGER_GAP_S = 3600                # one polite line an hour to someone not paired
+VOICE_MESSAGE_LIMIT = 10_000_000    # bytes: several minutes of Discord voice message
 _YES = re.compile(r"(?:y|yes|yep|yeah|ok|okay|approve|approved|do it|go ahead)[.! ]*", re.I)
 _NO = re.compile(r"(?:n|no|nope|deny|denied|don'?t|cancel|stop)[.! ]*", re.I)
 _TOKEN = re.compile(r"^[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{4,}\.[A-Za-z0-9_\-]{20,}$")
@@ -80,7 +82,7 @@ def strip_mention(text: str, bot_id: Optional[int]) -> str:
 
 class DiscordBridge:
     def __init__(self, settings_store, orchestrator, permissions=None, confirmations=None,
-                 activity=None, audit=None):
+                 activity=None, audit=None, voice=None):
         self.store = settings_store
         self.orchestrator = orchestrator
         self.permissions = permissions
@@ -96,6 +98,9 @@ class DiscordBridge:
         self._locks: Dict[int, asyncio.Lock] = {}
         self._waiting: Dict[int, str] = {}        # channel -> confirmation awaiting a yes/no
         self._unsubscribe: List[Any] = []
+        from .discord_voice import VoiceCalls
+
+        self.calls = VoiceCalls(self, voice)       # "call me on Discord"
 
     # -- settings -------------------------------------------------------------
     async def config(self) -> Dict[str, Any]:
@@ -119,9 +124,11 @@ class DiscordBridge:
             "connected": connected,
             "bot": str(user) if connected else "",
             "invite_url": (f"https://discord.com/oauth2/authorize?client_id={user.id}"
-                           f"&scope=bot&permissions=68608") if connected else "",
+                           f"&scope=bot&permissions={INVITE_PERMISSIONS}") if connected else "",
             "servers": bool(config["servers"]),
             "notify": bool(config["notify"]),
+            "call_reminders": bool(config["call_reminders"]),
+            **self.calls.status(),
             "server_count": len(self.client.guilds) if connected else 0,
             "owners": [{"id": o["id"], "name": o.get("name", "")} for o in config["owners"]],
             "pairing": bool(self._code and time.time() < self._code_until),
@@ -164,6 +171,13 @@ class DiscordBridge:
                            f"Notifications to Discord turned {'on' if on else 'off'}")
         return await self.status()
 
+    async def set_call_reminders(self, on: bool) -> Dict[str, Any]:
+        """Reminders ring as a Discord call: a DM to join voice, then said aloud."""
+        await self._save(call_reminders=bool(on))
+        await self._record("discord.call_reminders_on" if on else "discord.call_reminders_off",
+                           f"Reminders as Discord calls turned {'on' if on else 'off'}")
+        return await self.status()
+
     def new_pairing_code(self) -> str:
         self._code = f"{_random.randbelow(10**6):06d}"
         self._code_until = time.time() + PAIR_MINUTES * 60
@@ -191,6 +205,10 @@ class DiscordBridge:
                                  bus.subscribe(Events.NOTIFICATION, self._on_notification)]
 
     async def stop(self) -> None:
+        try:
+            await self.calls.hang_up("JARVIS's Discord bot was turned off.")
+        except Exception:
+            logger.debug("hang-up on stop failed", exc_info=True)
         client, self.client = self.client, None
         if client is not None:
             try:
@@ -241,6 +259,13 @@ class DiscordBridge:
                 await tree.sync()
             except Exception as exc:
                 logger.warning("couldn't register /help with Discord: %s", exc)
+
+        @client.event
+        async def on_voice_state_update(member, before, after):
+            try:
+                await self.calls.on_voice_state(member, before, after)
+            except Exception:
+                logger.exception("voice state handling failed")
 
         @client.event
         async def on_message(message):
@@ -296,8 +321,14 @@ class DiscordBridge:
             await message.reply("Discord chat is switched off in JARVIS's permissions.",
                                 mention_author=False)
             return
+        # A voice message from the phone: heard here, on this PC, then
+        # answered like anything typed.
+        heard = ""
         if not text:
-            return
+            heard = await self._voice_message(message)
+            if not heard:
+                return
+            text = heard
 
         channel_id = message.channel.id
         waiting = self._waiting.get(channel_id)
@@ -324,11 +355,50 @@ class DiscordBridge:
                         reply = event.get("text") or reply
                     elif kind == "error":
                         reply = f"I couldn't finish that: {event.get('error')}"
-            for i, part in enumerate(chunks(with_sources(reply, sources))):
+            shown = with_sources(reply, sources)
+            if heard:
+                shown = f"🎙️ *“{heard}”*\n\n{shown}"   # what was understood, so a mishearing is visible
+            for i, part in enumerate(chunks(shown)):
                 if i == 0:
                     await message.reply(part, mention_author=False)
                 else:
                     await message.channel.send(part)
+            # On a call: the answer is read out loud there too.
+            if self.calls.active:
+                asyncio.create_task(self.calls.speak(reply))
+
+    async def _voice_message(self, message) -> str:
+        """The words of a voice message (or any audio file) the owner sent, else ""."""
+        audio = next((a for a in getattr(message, "attachments", []) or []
+                      if str(getattr(a, "content_type", "") or "").startswith("audio/")), None)
+        if audio is None:
+            return ""
+        speech = self.calls.tts
+        if speech is None or not hasattr(speech, "transcribe"):
+            await message.reply("I can't listen to voice messages here: speech recognition isn't "
+                                "available.", mention_author=False)
+            return ""
+        if (getattr(audio, "size", 0) or 0) > VOICE_MESSAGE_LIMIT:
+            await message.reply("That recording is too long for me. Keep it under a few minutes.",
+                                mention_author=False)
+            return ""
+        try:
+            data = await audio.read()
+            async with message.channel.typing():
+                result = await speech.transcribe(data, getattr(audio, "filename", "") or "voice-message.ogg")
+        except Exception as exc:
+            logger.warning("voice message transcription failed: %s", exc)
+            await message.reply(f"I couldn't make out that recording ({type(exc).__name__}).",
+                                mention_author=False)
+            return ""
+        words = (result or {}).get("text", "").strip()
+        if not words:
+            await message.reply("I couldn't hear any words in that. Try again a little closer to "
+                                "the mic?", mention_author=False)
+            return ""
+        await self._record("discord.voice_message", "Discord voice message transcribed",
+                           {"seconds": round(float((result or {}).get("duration") or 0), 1)})
+        return words
 
     async def slash_help(self, interaction, topic: str = "") -> None:
         """The /help slash command: only the owner sees it, even in a server."""
@@ -421,6 +491,11 @@ class DiscordBridge:
         if client is None or client.is_closed() or not self.allowed():
             return
         config = await self.config()
+        if config["call_reminders"] and config["owners"] and data.get("title") == "Reminder":
+            try:
+                await self.calls.call(say=f"A reminder: {data.get('body') or ''}")
+            except Exception as exc:
+                logger.warning("couldn't call about a reminder: %s", exc)
         if not config["notify"] or not config["owners"]:
             return
         text = f"🔔 **{data.get('title') or 'JARVIS'}**"

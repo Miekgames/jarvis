@@ -148,12 +148,15 @@ SECTIONS: Tuple[Section, ...] = (
         Line('close that', 'closes it', 'open_panel'),
     )),
     Section('discord', 'Discord', ('discord', 'bot'),
-            'chat with JARVIS through your own Discord bot, notifications as DMs', (
+            'chat with JARVIS through your own Discord bot, notifications as DMs, calls in voice', (
         Line('pair Discord', 'chat with JARVIS from your own Discord bot', 'discord_pair'),
         Line('send my notifications to Discord', 'reminders and finished research as DMs', 'discord_notify'),
         Line('answer me in Discord servers too', '@mentions in servers, not only DMs', 'discord_servers'),
         Line('turn off Discord', 'stops the bot', 'discord_switch'),
         Line('unpair Discord', 'nobody can use it until you pair again', 'discord_unpair'),
+        Line('call me on Discord', 'DMs you to join voice, then talks to you there', 'discord_call'),
+        Line('hang up', 'ends the call', 'discord_hang_up'),
+        Line('call me for reminders', 'reminders ring as a Discord call', 'discord_call_reminders'),
     )),
     Section('devices', 'Phone and devices', ('phone', 'devices', 'smart home', 'home'),
             'send files to your phone, smart home', (

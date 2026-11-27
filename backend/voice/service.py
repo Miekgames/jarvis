@@ -29,6 +29,17 @@ from ..core.util import now_iso, truncate
 logger = logging.getLogger("jarvis.voice")
 
 
+
+_EMOJI = __import__("re").compile(
+    "[🀀-🫿☀-➿⬀-⯿⌀-⏿️‍⃣]+")
+
+
+def without_emojis(text: str) -> str:
+    """The words without the emojis, for speaking."""
+    spoken = " ".join(_EMOJI.sub(" ", text or "").split())
+    return __import__("re").sub(r"\s+([.,!?;:])", r"\1", spoken)
+
+
 class VoiceService:
     def __init__(self, settings, settings_store, activity):
         self.settings = settings
@@ -59,6 +70,8 @@ class VoiceService:
     async def synthesise(self, text: str, voice: Optional[str] = None, rate: float = 1.0) -> bytes:
         """Return MP3 bytes from edge-tts. Raises with a clear message if the
         package is missing or the service is unreachable."""
+        # Emojis are for reading: spoken, "✅" comes out as "check mark button".
+        text = without_emojis(text)
         if not text.strip():
             raise ValueError("Nothing to say.")
         try:

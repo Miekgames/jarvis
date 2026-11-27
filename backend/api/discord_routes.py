@@ -62,6 +62,32 @@ async def discord_notify(body: Switch, _user=Depends(current_user)):
     return await _bridge().set_notify(body.on)
 
 
+class Call(BaseModel):
+    say: str = ""
+
+
+@router.post("/discord/call", tags=["discord"])
+async def discord_call(body: Call, _user=Depends(current_user)):
+    bridge = _bridge()
+    try:
+        message = await bridge.calls.call(say=body.say.strip())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return {**(await bridge.status()), "message": message}
+
+
+@router.post("/discord/hangup", tags=["discord"])
+async def discord_hangup(_user=Depends(current_user)):
+    bridge = _bridge()
+    await bridge.calls.hang_up("You hung up.")
+    return await bridge.status()
+
+
+@router.post("/discord/call_reminders", tags=["discord"])
+async def discord_call_reminders(body: Switch, _user=Depends(current_user)):
+    return await _bridge().set_call_reminders(body.on)
+
+
 @router.post("/discord/pair", tags=["discord"])
 async def discord_pair(_user=Depends(current_user)):
     bridge = _bridge()

@@ -98,6 +98,7 @@ SETTINGS: Dict[str, Tuple[str, str, str, Any, Tuple[str, ...]]] = {
     "learning about me": ("ai", "learn_automatically", "bool", None,
                           ("learning", "learn about me", "remembering things about me")),
     "suggestions": ("awareness", "proactive", "bool", None, ("proactive suggestions", "tips")),
+    "emojis": ("personality", "emojis", "bool", None, ("emoji", "emoticons", "using emojis")),
     "reduced motion": ("theme", "reduced_motion", "bool", None, ("animations", "motion")),
     "high contrast": ("theme", "high_contrast", "bool", None, ("contrast",)),
     "skill colours": ("theme", "skill_colors", "bool", None,
@@ -219,6 +220,10 @@ def plain_setting(message: str):
     said = " ".join((message or "").lower().strip(" .!?").replace("’", "'").split())
     said = re.sub(r"^(?:jarvis,?\s+)?(?:can you\s+|could you\s+)?", "", said)
     said = re.sub(r",?\s+(?:please|for me|now|jarvis)$", "", said)
+    if re.fullmatch(r"(?:please\s+)?(?:stop|don't|do not)\s+(?:using|use)\s+(?:any\s+)?emojis?", said):
+        return "emojis", "off"
+    if re.fullmatch(r"(?:please\s+)?(?:start\s+)?(?:using|use)\s+(?:some\s+)?emojis?(?:\s+again)?", said):
+        return "emojis", "on"
     if re.fullmatch(r"(?:please\s+)?(?:stop|don't|do not)\s+chang(?:e|ing)\s+(?:the\s+|your\s+)?colou?rs?", said):
         return "skill colours", "off"
     if re.fullmatch(r"(?:please\s+)?(?:start\s+)?chang(?:e|ing)\s+(?:the\s+|your\s+)?colou?rs?\s+again", said):

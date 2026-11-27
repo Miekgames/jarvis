@@ -118,7 +118,8 @@ export function Conversation() {
 
   useUnreadInTitle(utterances);
 
-  if (!utterances.length) return null;
+  // Nothing said yet since opening: just the way back to earlier messages.
+  if (!utterances.length && !historyMore) return null;
 
   const latestButton = scrolledUp && (
     <button className="conversation__latest" onClick={toLatest}

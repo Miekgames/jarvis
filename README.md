@@ -172,9 +172,10 @@ off in Permissions says which switch turns it on.
   grocery list: eggs, milk and bread", "add butter to my grocery list",
   "check off eggs", "reset my workout list". "Show me my checklists" opens
   them: pick one and tap items to check and uncheck. Works on Discord too.
-- **Scroll back:** earlier messages are there when JARVIS opens, on the
-  computer or the phone; keep scrolling up and older ones load, back through
-  earlier days.
+- **A clean screen that remembers:** reloading or reopening JARVIS starts
+  with an empty screen, but the conversation carries on, so it still knows
+  what you just said. "Earlier messages" brings the history back, and
+  scrolling up keeps loading older ones, back through earlier days.
 - **Discord:** chat with JARVIS from Discord through your own bot. Make a bot
   in the [Developer Portal](https://discord.com/developers/applications)
   (New Application → Bot → Reset Token), paste the token into the Discord
@@ -184,7 +185,20 @@ off in Permissions says which switch turns it on.
   your OK is asked in the chat. Servers are off unless you say "answer me in
   Discord servers too", and "send my notifications to Discord" sends
   reminders and finished research to your DMs. Needs the "Chat through
-  Discord" permission.
+  Discord" permission. Everything Discord is optional and uses your own bot
+  and token.
+  - **Voice messages:** hold the mic in the bot's DM and ask out loud; it's
+    transcribed on your PC and answered like anything typed.
+  - **Calls (optional extra):** "call me on Discord" DMs you a link to a voice
+    channel; when you join, JARVIS joins and talks (it doesn't listen; it's
+    shown deafened). While you're on, what you type is answered out loud too.
+    "Hang up" ends it, and "call me for reminders" makes reminders ring this
+    way. Calls need two extra packages: run
+    `pip install -r requirements-voice.txt` (for the download:
+    `.venv\Scripts\python -m pip install -r requirements-voice.txt`), then
+    restart JARVIS. The bot needs Connect and Speak in a voice channel.
+- **Emojis:** JARVIS uses an emoji now and then where it adds meaning;
+  they're left out when it speaks. "Stop using emojis" turns them off.
 - **On your phone:** open JARVIS in your phone's browser (over your own
   network or Tailscale) and add it to your home screen: it opens full screen
   with its own icon, like an app. The layout fits a phone, with the clock

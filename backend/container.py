@@ -439,7 +439,7 @@ class Container:
         # background; only paired accounts get JARVIS (see discord_bridge).
         from .integrations.discord_bridge import DiscordBridge
         discord_bridge = DiscordBridge(settings_store, orchestrator, permissions, confirmations,
-                                       activity, audit)
+                                       activity, audit, voice=self.services.get("voice"))
         self.services["discord"] = discord_bridge
         asyncio.create_task(discord_bridge.start(), name="discord-start")
 

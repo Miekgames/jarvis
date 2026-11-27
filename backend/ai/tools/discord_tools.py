@@ -29,8 +29,46 @@ _SAID = [
 ]
 
 
+# Calls: the message to say keeps its own capitals, so these match the
+# original words rather than the lower-cased ones.
+_CALL_REMINDERS = re.compile(r"call\s+me\s+(?:for|with|about)\s+(?:my\s+)?reminders(?:\s+on\s+discord)?"
+                             r"|call\s+me\s+when\s+(?:a\s+)?reminders?\s+(?:goes|go)\s+off", re.I)
+_NO_CALL_REMINDERS = re.compile(r"(?:stop|don'?t|do\s+not)\s+call(?:ing)?\s+me\s+(?:for|with|about)\s+"
+                                r"(?:my\s+)?reminders", re.I)
+_CALL = re.compile(r"(?:(?:call|ring|phone)\s+me|give\s+me\s+a\s+(?:call|ring))"
+                   r"(?:\s+(?:on|through|over|via)\s+discord)?(?:\s+now)?"
+                   r"(?:\s+(?:and|to)\s+(?P<verb>tell|remind)\s+me\s+(?:that\s+|about\s+)?(?P<say>.+))?", re.I)
+_HANG_UP = re.compile(r"hang\s+up(?:\s+the\s+call)?|end\s+(?:the|this|our)\s+call|"
+                      r"leave\s+the\s+(?:voice\s+)?(?:call|channel)", re.I)
+
+
+def _call_said(said: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+    if _NO_CALL_REMINDERS.fullmatch(said):
+        return "discord_call_reminders", {"on": False}
+    if _CALL_REMINDERS.fullmatch(said):
+        return "discord_call_reminders", {"on": True}
+    if _HANG_UP.fullmatch(said):
+        return "discord_hang_up", {}
+    m = _CALL.fullmatch(said)
+    if m:
+        say = (m.group("say") or "").strip()
+        if say and (m.group("verb") or "").lower() == "remind":
+            say = f"This is your reminder {say if say.lower().startswith('to ') else 'about ' + say}."
+        elif say:
+            say = say[:1].upper() + say[1:] + ("" if say[-1:] in ".!?" else ".")
+        return "discord_call", {"say": say}
+    return None
+
+
 def discord_said(message: str) -> Optional[Tuple[str, Dict[str, Any]]]:
     """(tool, arguments) for a plainly worded Discord request, else None."""
+    plain = " ".join((message or "").strip(" .!?").replace("’", "'").split())
+    plain = re.sub(r"^(?:hey\s+)?jarvis,?\s+", "", plain, flags=re.I)
+    plain = re.sub(r"^(?:can you\s+|could you\s+|please\s+)", "", plain, flags=re.I)
+    plain = re.sub(r",?\s+(?:please|jarvis)$", "", plain, flags=re.I)
+    called = _call_said(plain)
+    if called is not None:
+        return called
     said = " ".join((message or "").lower().strip(" .!?").replace("’", "'").split())
     said = re.sub(r"^(?:jarvis,?\s+)?(?:can you\s+|could you\s+|please\s+)?", "", said)
     said = re.sub(r",?\s+(?:please|for me|now|jarvis)$", "", said)
@@ -141,6 +179,60 @@ def register(registry: ToolRegistry) -> None:
                   "Your notifications will come to you on Discord too: reminders, finished research "
                   "and the rest, as a DM from your bot." if on else
                   "Notifications stay on the JARVIS screen and in Windows, not Discord.")
+
+    @registry.add(
+        "discord_call",
+        "Call the owner on Discord: DMs them a link to join a voice channel, then joins them and "
+        "speaks: 'call me on Discord', 'call me and tell me the oven's done'.",
+        {"type": "object", "properties": {
+            "say": {"type": "string", "description": "What to say once they join, if anything"},
+        }},
+        permission="discord.chat",
+        category="discord call ring phone voice talk",
+    )
+    async def discord_call(ctx, say: str = ""):
+        bridge = ctx.get("discord")
+        if bridge is None:
+            return fail("The Discord service isn't available.")
+        try:
+            said = await bridge.calls.call(say=(say or "").strip())
+        except RuntimeError as exc:
+            return fail(str(exc))
+        return ok(bridge.calls.status(), said)
+
+    @registry.add(
+        "discord_hang_up",
+        "End the Discord call, or cancel one that hasn't been answered: 'hang up'.",
+        {"type": "object", "properties": {}},
+        category="discord call hang up end voice",
+    )
+    async def discord_hang_up(ctx):
+        bridge = ctx.get("discord")
+        if bridge is None:
+            return fail("The Discord service isn't available.")
+        if await bridge.calls.hang_up("You hung up."):
+            return ok({}, "Hung up.")
+        return ok({}, "There's no call to hang up.")
+
+    @registry.add(
+        "discord_call_reminders",
+        "Whether reminders ring as a Discord call (a DM to join voice, then the reminder said "
+        "aloud): 'call me for reminders', 'stop calling me for reminders'.",
+        {"type": "object", "properties": {"on": {"type": "boolean"}}, "required": ["on"]},
+        permission="discord.chat",
+        category="discord call reminders ring voice",
+    )
+    async def discord_call_reminders(ctx, on: bool):
+        bridge = ctx.get("discord")
+        if bridge is None:
+            return fail("The Discord service isn't available.")
+        status = await bridge.status()
+        if on and not status["owners"]:
+            return fail("Pair your Discord account first: say “pair Discord”.")
+        await bridge.set_call_reminders(bool(on))
+        return ok({"call_reminders": bool(on)},
+                  "When a reminder goes off I'll call you on Discord: a DM to join voice, then I'll "
+                  "say it." if on else "Reminders won't call you on Discord any more.")
 
     @registry.add(
         "discord_servers",

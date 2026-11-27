@@ -160,6 +160,11 @@ interface Store {
   utterances: Utterance[];
   /** Whether there are earlier messages still to load when scrolling back. */
   historyMore: boolean;
+  /** Earlier messages fetched at start-up but not shown: the screen opens
+   *  clean, JARVIS still remembers, and "earlier messages" brings them back. */
+  pastHidden: Utterance[];
+  /** Whether the server has more beyond those. */
+  serverMore: boolean;
   /** Load the page of messages before the earliest on screen. */
   loadEarlier: () => Promise<number>;
   conversationId: string | null;
@@ -338,6 +343,8 @@ export const useStore = create<Store>((set, get) => ({
 
   utterances: [],
   historyMore: false,
+  pastHidden: [],
+  serverMore: false,
   conversationId: null,
   busy: false,
 
@@ -415,9 +422,10 @@ export const useStore = create<Store>((set, get) => ({
         // and the conversation still going, so it carries on here.
         api.get<{ messages: PastMessage[]; more: boolean; current?: string | null }>('/ai/timeline?limit=30')
           .then((page) => set((s) => {
-            const known = new Set(s.utterances.map((u) => u.id));
-            const past = (page.messages ?? []).filter((m) => !known.has(m.id)).map(fromPast);
-            return { utterances: [...past, ...s.utterances], historyMore: !!page.more,
+            // Remembered, not shown: the screen opens clean and the
+            // conversation carries on.
+            const past = (page.messages ?? []).map(fromPast);
+            return { pastHidden: past, serverMore: !!page.more, historyMore: past.length > 0,
                      conversationId: s.conversationId ?? page.current ?? null };
           }))
           .catch(() => undefined),
@@ -601,16 +609,25 @@ export const useStore = create<Store>((set, get) => ({
                     detail: 'Wake word is off.' },
     }));
   },
-  clearConversation: () => set({ utterances: [], conversationId: null, historyMore: false }),
+  clearConversation: () => set({ utterances: [], conversationId: null, historyMore: false,
+                                 pastHidden: [], serverMore: false }),
 
   loadEarlier: async () => {
+    // First, the ones fetched at start-up and kept out of sight.
+    const hidden = get().pastHidden;
+    if (hidden.length) {
+      const known = new Set(get().utterances.map((u) => u.id));
+      const earlier = hidden.filter((u) => !known.has(u.id));
+      set((s) => ({ utterances: [...earlier, ...s.utterances], pastHidden: [], historyMore: s.serverMore }));
+      return earlier.length;
+    }
     const oldest = get().utterances.find((u) => u.createdAt);
     if (!oldest?.createdAt || !get().historyMore) return 0;
     const page = await api.get<{ messages: PastMessage[]; more: boolean }>(
       `/ai/timeline?limit=30&before=${encodeURIComponent(oldest.createdAt)}`);
     const known = new Set(get().utterances.map((u) => u.id));
     const earlier = (page.messages ?? []).filter((m) => !known.has(m.id)).map(fromPast);
-    set((s) => ({ utterances: [...earlier, ...s.utterances], historyMore: !!page.more }));
+    set((s) => ({ utterances: [...earlier, ...s.utterances], historyMore: !!page.more, serverMore: !!page.more }));
     return earlier.length;
   },
 

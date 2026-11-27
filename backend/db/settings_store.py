@@ -33,6 +33,12 @@ DEFAULTS: Dict[str, Any] = {
         # The screen fades to a skill's own colour while it's in use.
         "skill_colors": True,
     },
+    # Which local model rewrites JARVIS's own code ("use mistral for
+    # self-editing"). Empty: the best installed coder that isn't the chat model.
+    "selfedit": {
+        "model": "",
+        "provider": "",
+    },
     "particles": {
         "count": 4200,
         "quality": "auto",          # auto | high | balanced | low
@@ -49,6 +55,7 @@ DEFAULTS: Dict[str, Any] = {
         "humour": 0.2,
         "response_length": "concise",
         "custom_instructions": "",
+        "emojis": True,             # an emoji now and then where it adds meaning
     },
     "ai": {
         "route": {

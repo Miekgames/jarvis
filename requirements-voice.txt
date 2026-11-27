@@ -1,0 +1,5 @@
+# Optional: Discord voice calls ("call me on Discord").
+# Install with:  pip install -r requirements-voice.txt
+# (for the downloaded app:  .venv\Scripts\python -m pip install -r requirements-voice.txt)
+PyNaCl>=1.5,<1.6           # voice connections
+davey>=0.1.7,<0.2          # Discord's voice encryption; 0.2.0 never gets ready with discord.py 2.7, so calls are silent

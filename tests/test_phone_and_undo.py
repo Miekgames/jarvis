@@ -153,3 +153,24 @@ def test_inside():
     assert inside(root, "conftest.py") == root / "conftest.py"
     assert inside(root, "../pytest.ini") is None
     assert inside(root, "") is None
+
+
+# ---------------------------------------------------------------------------
+def test_emojis_are_for_reading_not_speaking():
+    from backend.voice.service import without_emojis
+
+    assert without_emojis("✅ Done! 🛒 Added milk. ⚠️ It's 5°C, wear a coat 🧥.") == \
+        "Done! Added milk. It's 5°C, wear a coat."
+
+
+@pytest.mark.parametrize("said, value", [("stop using emojis", "off"), ("use emojis", "on"),
+                                         ("turn off emojis", "off"), ("start using emojis again", "on")])
+def test_emojis_by_saying_it(said, value):
+    assert ct.plain_setting(said) == ("emojis", value)
+
+
+def test_the_prompt_follows_the_emoji_setting():
+    from backend.ai.prompt import _emoji_rule
+
+    assert "emoji now and then" in _emoji_rule({})
+    assert _emoji_rule({"emojis": False}) == "- Don't use emojis."
