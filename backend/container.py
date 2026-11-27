@@ -431,6 +431,14 @@ class Container:
         self.services["mcp"] = mcp
         asyncio.create_task(mcp.start(), name="mcp-start")
 
+        # Discord: the owner's own bot, if they set one up. Connects in the
+        # background; only paired accounts get JARVIS (see discord_bridge).
+        from .integrations.discord_bridge import DiscordBridge
+        discord_bridge = DiscordBridge(settings_store, orchestrator, permissions, confirmations,
+                                       activity, audit)
+        self.services["discord"] = discord_bridge
+        asyncio.create_task(discord_bridge.start(), name="discord-start")
+
         # Off the loop: the probe is an import, and `openwakeword` takes the
         # better part of fifteen seconds to load from this disk. Done inline
         # it blocks uvicorn from answering its own health check, which is how
@@ -587,6 +595,13 @@ class Container:
                 await mcp.stop()
             except Exception:
                 logger.exception("error stopping MCP plug-ins")
+
+        discord_bridge = self.get("discord")
+        if discord_bridge is not None:
+            try:
+                await discord_bridge.stop()
+            except Exception:
+                logger.exception("error stopping the Discord bot")
 
         hotword = self.get("hotword")
         if hotword is not None:

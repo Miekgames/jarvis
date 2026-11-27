@@ -163,6 +163,16 @@ trusted:
   disagree), instead of guessing or telling you to check a website. A short
   follow-up ("and the over/under?") is looked up too. The articles it read
   are listed under the answer as links, so you can check it.
+- **Discord:** chat with JARVIS from Discord through your own bot. Make a bot
+  in the [Developer Portal](https://discord.com/developers/applications)
+  (New Application → Bot → Reset Token), paste the token into the Discord
+  panel (it's sealed on your PC), say "pair Discord" and DM the bot the code.
+  Only paired accounts get an answer; anyone else gets one polite line. Same
+  tools, permissions and audit log as the screen, and anything that needs
+  your OK is asked in the chat. Servers are off unless you say "answer me in
+  Discord servers too", and "send my notifications to Discord" sends
+  reminders and finished research to your DMs. Needs the "Chat through
+  Discord" permission.
 - **On your phone:** open JARVIS in your phone's browser (over your own
   network or Tailscale) and add it to your home screen: it opens full screen
   with its own icon, like an app. The layout fits a phone, with the clock

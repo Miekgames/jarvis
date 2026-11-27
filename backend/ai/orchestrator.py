@@ -576,6 +576,8 @@ class Orchestrator:
             done = await self._plain_setting(message, conversation_id)
         if done is None:
             done = await self._plain_research(message, conversation_id)
+        if done is None:
+            done = await self._plain_discord(message, conversation_id)
         if done is not None:
             await self._save_message(conversation_id, "assistant", done,
                                      [{"type": "text", "text": done}])
@@ -1207,6 +1209,17 @@ class Orchestrator:
         if messages is not None:
             messages += [{"role": "assistant", "content": blocks},
                          {"role": "user", "content": results}]
+
+    async def _plain_discord(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
+        """"Pair Discord", "turn off Discord": done at once, through the tool runner."""
+        from .tools.discord_tools import discord_said
+
+        found = discord_said(message)
+        if found is None or self.registry is None or self.registry.get(found[0]) is None:
+            return None
+        tool, arguments = found
+        result = await self.registry.dispatch(tool, arguments, conversation_id=conversation_id)
+        return result.message or ("Done." if result.ok else "That couldn't be done.")
 
     async def _plain_research(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
         """"Research X", "look into X": the 15-20 minute research, started at once.

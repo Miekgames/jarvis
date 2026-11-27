@@ -87,6 +87,9 @@ REGISTRY: List[PermissionDef] = [
 
     # -- communications ------------------------------------------------------
     PermissionDef("meetings.join", "Join meetings", "Open or join a meeting on your behalf.", Risk.HIGH, False),
+    PermissionDef("discord.chat", "Chat through Discord",
+                  "Answer you on Discord through your own bot. Only accounts you pair can use it.",
+                  Risk.HIGH, False),
 
     # -- home ----------------------------------------------------------------
     PermissionDef("smarthome.control", "Control smart home", "Lights, plugs, thermostats and scenes.", Risk.HIGH, False),

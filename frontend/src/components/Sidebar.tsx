@@ -40,6 +40,7 @@ const GROUPS: Group[] = [
     entries: [
       { key: 'tasks', label: 'Tasks', say: 'what’s running?' },
       { key: 'email', label: 'Email', say: 'any new emails?' },
+      { key: 'discord', label: 'Discord', say: 'pair Discord' },
       { key: 'away', label: 'While away', say: 'while I’m away for an hour, build me a habit tracker' },
       { key: 'agents', label: 'Agents', say: 'what are the agents doing?' },
       { key: 'notifications', label: 'Notifications', say: 'any notifications?' },

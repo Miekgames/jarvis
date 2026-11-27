@@ -34,6 +34,7 @@ PANELS: Dict[str, Tuple[str, List[str]]] = {
     "calendar": ("Calendar", ["diary", "schedule", "events"]),
     "countdowns": ("Countdowns", ["countdown", "timers"]),
     "everyday": ("Everyday", ["everyday lookups", "lookups", "converter"]),
+    "discord": ("Discord", ["discord bot", "the discord bot", "discord settings"]),
     "automations": ("Automations", ["automation", "rules"]),
     "system": ("System", ["system monitor", "pc stats", "performance"]),
     "integrations": ("Integrations", ["connections"]),

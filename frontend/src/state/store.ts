@@ -132,7 +132,8 @@ export type Panel =
   | null | 'tasks' | 'settings' | 'history' | 'automations'
   | 'system' | 'memory' | 'calendar' | 'integrations' | 'activity' | 'notifications'
   | 'goals' | 'agents' | 'research' | 'developer' | 'selfedit' | 'voice'
-  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns' | 'everyday' | 'reminders';
+  | 'workshop' | 'away' | 'skills' | 'plugins' | 'documents' | 'email' | 'countdowns' | 'everyday' | 'reminders'
+  | 'discord';
 
 interface Store {
   // -- presence ------------------------------------------------------------
