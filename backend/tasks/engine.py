@@ -1,4 +1,4 @@
-"""
+r"""
 Persistent long-running task engine.
 
 The defining property: a task is a row in the database, not a coroutine tied to
