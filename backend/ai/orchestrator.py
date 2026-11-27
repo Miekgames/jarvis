@@ -571,7 +571,10 @@ class Orchestrator:
 
         # "Open settings", "close that": done straight away, without the
         # model -- quick, and it works even while research has the model busy.
-        done = self._open_or_close(message)
+        # "/help": everything this JARVIS can do, straight from what's installed.
+        done = self._plain_help(message)
+        if done is None:
+            done = self._open_or_close(message)
         if done is None:
             done = await self._plain_setting(message, conversation_id)
         if done is None:
@@ -1245,6 +1248,23 @@ class Orchestrator:
         return (f"Researching “{topic}” now. It takes about {minutes} minutes: I'll put the report "
                 "here (what I found, and what's next) and send a notification. Say “stop the "
                 "research” to stop it.")
+
+    def help_text(self, topic: str = "") -> str:
+        """/help's answer: built from the tools, skills and permissions this
+        JARVIS really has, so it never lists something that isn't there."""
+        from ..services.help import build_help
+
+        context = self.registry.context if self.registry is not None else None
+        return build_help(self.registry,
+                          context.get("skills") if context is not None else None,
+                          context.get("permissions") if context is not None else None,
+                          topic)
+
+    def _plain_help(self, message: str) -> Optional[str]:
+        from ..services.help import help_said
+
+        topic = help_said(message)
+        return None if topic is None else self.help_text(topic)
 
     def _open_or_close(self, message: str) -> Optional[str]:
         """The reply to "open <part of JARVIS>" / "close that", having done it;

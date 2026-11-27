@@ -127,6 +127,11 @@ trusted:
 
 ## What it does
 
+Type **/help** (in the app or to the Discord bot) for the full list, with
+something to say for each, or **/help email**, **/help discord** and so on
+for one area. It's built from what your copy actually has: anything switched
+off in Permissions says which switch turns it on.
+
 - **Conversation** with streaming replies, tool use, voice in and out, and a
   wake word ("Jarvis, …").
 - **Just say it:** everything in the sidebar can be done by asking, with no

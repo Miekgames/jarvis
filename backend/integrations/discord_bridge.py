@@ -215,15 +215,32 @@ class DiscordBridge:
         except ImportError:
             self._error = "The discord.py package isn't installed (pip install discord.py)."
             return
+        from discord import app_commands
+
         intents = discord.Intents.default()      # DMs and @mentions need no privileged intent
         client = discord.Client(intents=intents)
         self.client = client
+        tree = app_commands.CommandTree(client)
+
+        # "/help" in Discord's own command picker. Typing /help as a message
+        # works too: it goes to JARVIS like anything else.
+        @tree.command(name="help", description="Everything JARVIS can do")
+        @app_commands.describe(topic="Just one area, e.g. email, reminders, discord, skills")
+        async def help_command(interaction, topic: Optional[str] = None):
+            await self.slash_help(interaction, topic or "")
+
+        if hasattr(app_commands, "allowed_contexts"):        # DMs with the bot, and servers
+            app_commands.allowed_contexts(guilds=True, dms=True, private_channels=False)(help_command)
 
         @client.event
         async def on_ready():
             self._error = ""
             logger.info("discord bot online as %s", client.user)
             await self._log(f"Discord bot online as {client.user}")
+            try:
+                await tree.sync()
+            except Exception as exc:
+                logger.warning("couldn't register /help with Discord: %s", exc)
 
         @client.event
         async def on_message(message):
@@ -312,6 +329,23 @@ class DiscordBridge:
                     await message.reply(part, mention_author=False)
                 else:
                     await message.channel.send(part)
+
+    async def slash_help(self, interaction, topic: str = "") -> None:
+        """The /help slash command: only the owner sees it, even in a server."""
+        config = await self.config()
+        if str(interaction.user.id) not in {o["id"] for o in config["owners"]}:
+            await interaction.response.send_message(
+                "I'm a private AI assistant and only answer the person who runs me.", ephemeral=True)
+            return
+        if not self.allowed():
+            await interaction.response.send_message(
+                "Discord chat is switched off in JARVIS's permissions.", ephemeral=True)
+            return
+        await self._record("discord.help", f"/help on Discord{(' ' + topic) if topic else ''}")
+        parts = chunks(self.orchestrator.help_text(topic))
+        await interaction.response.send_message(parts[0], ephemeral=True)
+        for part in parts[1:]:
+            await interaction.followup.send(part, ephemeral=True)
 
     async def _stranger(self, message, text: str, is_dm: bool, config: Dict[str, Any]) -> None:
         author = str(message.author.id)

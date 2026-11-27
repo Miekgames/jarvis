@@ -741,7 +741,7 @@ export function CommandBar() {
               if (recall(event.key === 'ArrowUp' ? -1 : 1, text)) event.preventDefault();
             }
           }}
-          placeholder={listening ? 'Listening…' : 'Ask JARVIS anything…'}
+          placeholder={listening ? 'Listening…' : 'Ask JARVIS anything… (/help)'}
           aria-label="Ask JARVIS anything"
           autoComplete="off"
           spellCheck={false}
