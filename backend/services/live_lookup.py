@@ -229,7 +229,8 @@ def as_context(found: Dict[str, Any], today: str = "") -> str:
         "written under: never move a number from one source to another, and never make "
         "one up. Call each side by the name its source uses. If the sources disagree, "
         "give each one's pick briefly. If what you report is from an earlier day than "
-        "today, say which day (\"on Tuesday\"), not \"last night\". Don't mention "
+        "today, say which day (\"on Tuesday\"), not \"last night\"; if it's from today, "
+        "don't mention the date at all. Don't mention "
         "searching, results, snippets or videos, and don't tell the user to check other "
         "websites. If none of it answers the question, say what you did find.",
     ]

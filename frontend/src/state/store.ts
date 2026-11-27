@@ -66,7 +66,8 @@ export interface Utterance {
   streaming?: boolean;
   tools?: { name: string; ok?: boolean; summary?: string;
             flagged?: boolean; flagLevel?: string; redacted?: number;
-            input?: Record<string, unknown>; durationMs?: number }[];
+            input?: Record<string, unknown>; durationMs?: number;
+            sources?: { title: string; url: string; source: string }[] }[];
   error?: boolean;
   /** Measured cost of producing this reply (JARVIS turns only). */
   telemetry?: import('../lib/api').Telemetry;
@@ -469,7 +470,8 @@ export const useStore = create<Store>((set, get) => ({
                 if (tools[i].name === event.tool && tools[i].ok === undefined) {
                   tools[i] = { ...tools[i], ok: event.ok, summary: event.summary,
                               flagged: event.flagged, flagLevel: event.flag_level,
-                              redacted: event.redacted, durationMs: event.duration_ms };
+                              redacted: event.redacted, durationMs: event.duration_ms,
+                              sources: event.sources };
                   break;
                 }
               }

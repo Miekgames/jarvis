@@ -73,6 +73,8 @@ export interface ChatEvent {
   redacted?: number;
   /** How long the tool took. */
   duration_ms?: number;
+  /** Pages the tool read, listed under the answer as links. */
+  sources?: { title: string; url: string; source: string }[];
   /** Measurements of the reply, sent with `final`. */
   telemetry?: Telemetry;
 }

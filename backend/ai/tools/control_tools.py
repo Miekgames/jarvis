@@ -10,10 +10,69 @@ can't become a volume of 11.
 """
 from __future__ import annotations
 
+import copy
 import re
-from typing import Any, Dict, Optional, Tuple
+import time
+from typing import Any, Dict, List, Optional, Tuple
 
 from .registry import ToolRegistry, fail, ok
+
+# Changes made by asking, newest last, so "undo that" can put one back: the
+# whole settings section as it was before, and what was changed.
+_CHANGES: List[Dict[str, Any]] = []
+UNDO_WINDOW_S = 60 * 60          # "undo that" means something recent
+_UNDO = re.compile(
+    # Not "undo that change" / "undo that edit": those are self-edit's.
+    r"(?:please\s+)?(?:undo(?:\s+(?:that|it|this|the\s+last\s+setting(?:\s+change)?))?"
+    r"|change\s+(?:it|that)\s+back|put\s+(?:it|that)\s+back|switch\s+(?:it|that)\s+back"
+    r"|go\s+back\s+to\s+(?:how|what)\s+it\s+was|revert\s+(?:that|it))")
+
+
+async def _remember(store, key: str, what: str) -> None:
+    before = copy.deepcopy(await store.get(key, {}) or {})
+    _CHANGES.append({"at": time.monotonic(), "key": key, "before": before, "what": what})
+    del _CHANGES[:-10]
+
+
+def last_change() -> Optional[Dict[str, Any]]:
+    """The most recent change made by asking, if it was within the hour."""
+    if _CHANGES and time.monotonic() - _CHANGES[-1]["at"] <= UNDO_WINDOW_S:
+        return _CHANGES[-1]
+    return None
+
+
+async def undo_last(store) -> Tuple[bool, str]:
+    """Put the last change made by asking back the way it was."""
+    change = last_change()
+    if change is None:
+        return False, "Nothing to undo: no setting or theme was changed by asking in the last hour."
+    _CHANGES.pop()
+    await store.set(change["key"], change["before"])
+    if change["what"] == "theme":
+        from ...services import themes
+
+        preset = change["before"].get("preset") or "arc_reactor"
+        name = themes.THEMES.get(preset, {}).get("name", preset.replace("_", " ").title())
+        return True, f"Back to the {name} theme."
+    name = change["what"]
+    key, field, kind, _details, _others = SETTINGS[name]
+    return True, f"{name[:1].upper() + name[1:]} is back to {_shown(key, field, kind, change['before'].get(field))}."
+
+
+def _shown(key: str, field: str, kind: str, value: Any) -> str:
+    if kind == "bool":
+        return {True: "on", False: "off"}.get(value, str(value))
+    if key == "voice" and field == "volume" and isinstance(value, (int, float)):
+        return f"{int(value * 100)}%"
+    return str(value)
+
+
+def plain_undo(message: str) -> bool:
+    """True for a plain "undo that" / "change it back" when there's a change to undo."""
+    said = " ".join((message or "").lower().strip(" .!?").replace("’", "'").split())
+    said = re.sub(r"^(?:jarvis,?\s+)?(?:can you\s+|could you\s+)?", "", said)
+    said = re.sub(r",?\s+(?:please|for me|now|jarvis)$", "", said)
+    return bool(_UNDO.fullmatch(said)) and last_change() is not None
 
 # name -> (settings key, field, kind, details, other names)
 SETTINGS: Dict[str, Tuple[str, str, str, Any, Tuple[str, ...]]] = {
@@ -120,6 +179,7 @@ async def apply(store, setting: str, value: str):
         if key is None:
             return False, ("The themes are: " + ", ".join(t["name"] for t in themes.THEMES.values())
                            + ". Which one?")
+        await _remember(store, "theme", "theme")
         await store.patch("theme", {"preset": key, **themes.palette(key)})
         return True, f"Switched to the {themes.THEMES[key]['name']} theme."
     name = which_setting(setting) or which_setting(f"{setting} {value}")
@@ -132,11 +192,11 @@ async def apply(store, setting: str, value: str):
         chosen = new_value(name, value or setting, current)
     except ValueError as exc:
         return False, str(exc)
-    await store.patch(key, {field: chosen})
-    shown = {True: "on", False: "off"}.get(chosen, chosen) if kind == "bool" else chosen
-    if key == "voice" and field == "volume":
-        shown = f"{int(chosen * 100)}%"
     same = current is not None and current == chosen
+    if not same:
+        await _remember(store, key, name)
+    await store.patch(key, {field: chosen})
+    shown = _shown(key, field, kind, chosen)
     return True, f"{name[:1].upper() + name[1:]} is now {shown}." + (" (It already was.)" if same else "")
 
 
@@ -205,6 +265,20 @@ def register(registry: ToolRegistry) -> None:
             return fail("Settings are not available.")
         done, said = await apply(store, setting, value)
         return ok({"setting": setting}, said) if done else fail(said)
+
+    @registry.add(
+        "undo_setting",
+        "Undo the last setting or theme change the owner asked for: 'undo that', 'change it "
+        "back', 'put it back'. Only changes made by asking in the last hour.",
+        {"type": "object", "properties": {}},
+        category="setting settings undo revert back theme",
+    )
+    async def undo_setting(ctx):
+        store = ctx.get("settings_store")
+        if store is None:
+            return fail("Settings are not available.")
+        done, said = await undo_last(store)
+        return ok({"undone": done}, said) if done else fail(said)
 
     # ------------------------------------------------------------------------
     @registry.add(

@@ -246,6 +246,10 @@ export function Conversation() {
               {utterance.streaming && <Waiting since={utterance.ts} />}
             </div>
 
+            {utterance.role === 'jarvis' && !utterance.streaming && (
+              <Sources utterance={utterance} />
+            )}
+
             {utterance.role === 'jarvis' && !utterance.streaming && utterance.telemetry && (
               <XRay telemetry={utterance.telemetry} />
             )}
@@ -401,6 +405,38 @@ function XRay({ telemetry: t }: { telemetry: Telemetry }) {
  * Ported idea: OpenJarvis's tool-call cards and trace debugger -- the reply
  * shown as the steps that produced it, not only as its final text.
  */
+/**
+ * The pages an answer came from, as links under it: "CBS Sports · USA TODAY".
+ * Only pages a tool actually read, never a search result it only glanced at,
+ * so each link is somewhere the answer can be checked.
+ */
+function Sources({ utterance }: { utterance: Utterance }) {
+  const seen = new Set<string>();
+  const sources = (utterance.tools ?? [])
+    .flatMap((tool) => tool.sources ?? [])
+    .filter((s) => /^https?:\/\//i.test(s.url) && !seen.has(s.url) && !!seen.add(s.url))
+    .slice(0, 5);
+  if (!sources.length) return null;
+  // Three articles from one site read "CBS Sports CBS Sports CBS Sports":
+  // a second and third from the same place are numbered instead.
+  const count = new Map<string, number>();
+  return (
+    <div className="utterance__sources">
+      <span className="utterance__sources-label">from</span>
+      {sources.map((s) => {
+        const name = s.source || s.url.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0];
+        const n = (count.get(name) ?? 0) + 1;
+        count.set(name, n);
+        return (
+          <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" title={s.title}>
+            {n === 1 ? name : `${name} (${n})`}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 function ToolCard({ tool }: { tool: NonNullable<Utterance['tools']>[number] }) {
   const input = tool.input && Object.keys(tool.input).length
     ? JSON.stringify(tool.input, null, 2) : '';

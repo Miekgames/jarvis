@@ -45,6 +45,10 @@ export function Clock() {
   const date = now.toLocaleDateString([], {
     weekday: 'long', day: 'numeric', month: 'long',
   });
+  // On a phone the long date ran into "STANDING BY": it shows this instead.
+  const shortDate = now.toLocaleDateString([], {
+    weekday: 'short', day: 'numeric', month: 'short',
+  });
 
   return (
     <div className="clock" aria-hidden="true">
@@ -52,7 +56,10 @@ export function Clock() {
         {time}
         <span className="clock__seconds">{seconds}</span>
       </div>
-      <div className="clock__date">{date}</div>
+      <div className="clock__date">
+        <span className="clock__date-long">{date}</span>
+        <span className="clock__date-short">{shortDate}</span>
+      </div>
     </div>
   );
 }

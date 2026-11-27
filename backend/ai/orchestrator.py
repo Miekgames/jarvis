@@ -728,6 +728,8 @@ class Orchestrator:
                         "flag_level": screen.get("level", ""),
                         "redacted": sum((screen.get("redacted") or {}).values()),
                         "duration_ms": round((time.perf_counter() - tool_started) * 1000, 1),
+                        # Pages a tool actually read, listed under the answer.
+                        "sources": result.meta.get("sources") or [],
                     }
                     results.append(
                         {
@@ -1143,8 +1145,12 @@ class Orchestrator:
         Goes through the tool runner like any other change, so it shows on
         screen, is checked against permissions and lands in the activity log.
         """
-        from .tools.control_tools import plain_setting
+        from .tools.control_tools import plain_setting, plain_undo
 
+        # "Undo that" / "change it back" straight after one of these.
+        if self.registry is not None and plain_undo(message):
+            result = await self.registry.dispatch("undo_setting", {}, conversation_id=conversation_id)
+            return result.message or ("Done." if result.ok else "That couldn't be undone.")
         found = plain_setting(message)
         if found is None or self.registry is None:
             return None
@@ -1169,6 +1175,7 @@ class Orchestrator:
             "flagged": bool(screen.get("flagged")), "flag_level": screen.get("level", ""),
             "redacted": sum((screen.get("redacted") or {}).values()),
             "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+            "sources": result.meta.get("sources") or [],
         }
         return end, (result.to_model_string() if result.ok else "")
 

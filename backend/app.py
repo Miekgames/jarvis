@@ -106,16 +106,11 @@ def create_app() -> FastAPI:
 
     # ------------------------------------------------------------------
     if FRONTEND_DIST.exists():
-        assets = FRONTEND_DIST / "assets"
-        if assets.exists():
-            app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
+        # Page never cached, hashed assets cached for good, nothing served
+        # from outside the built interface: see api/frontend_files.py.
+        from .api.frontend_files import mount_interface
 
-        @app.get("/{full_path:path}", include_in_schema=False)
-        async def spa(full_path: str):
-            candidate = FRONTEND_DIST / full_path
-            if full_path and candidate.is_file():
-                return FileResponse(candidate)
-            return FileResponse(FRONTEND_DIST / "index.html")
+        mount_interface(app, FRONTEND_DIST)
 
         logger.info("serving the built frontend from %s", FRONTEND_DIST)
     else:

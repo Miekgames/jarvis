@@ -274,6 +274,8 @@ class ToolRegistry:
 
         if _SETTING.search(query or ""):
             wanted.append("change_setting")
+        if re.search(r"\b(?:undo|(?:change|put|switch)\s+(?:it|that)\s+back|revert)\b", query or "", re.I):
+            wanted.append("undo_setting")
         if _AWAY.search(query or ""):
             wanted += ["start_away_work", "stop_away_work"]
         if _OPEN.search(query or ""):

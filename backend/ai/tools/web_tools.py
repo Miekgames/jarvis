@@ -58,7 +58,12 @@ def register(registry: ToolRegistry) -> None:
         # escaped strings, and screening still wraps anything a page tried.
         from datetime import datetime
         today = datetime.now().strftime("%A %d %B %Y")       # so "an earlier day" means something
-        return ok(as_context(found, today), f"Read {read} article(s) for '{found['query']}': {sources}.")
+        # The articles read, for the screen to list under the answer as
+        # links -- so an answer can be checked, not just believed.
+        read_pages = [{"title": page["title"], "url": page["url"], "source": page["source"]}
+                      for page in found["pages"] if str(page["url"]).startswith(("https://", "http://"))]
+        return ok(as_context(found, today), f"Read {read} article(s) for '{found['query']}': {sources}.",
+                  sources=read_pages)
 
     # ==================================================================
     @registry.add(

@@ -3050,3 +3050,53 @@ a { color: var(--accent); }
   border-radius: 50%; vertical-align: 0.05rem;
   box-shadow: 0 0 6px currentColor;
 }
+
+/* ------------------------------------------------------------------------
+   Phones. The centred clock's long date ran into "STANDING BY" on a
+   390-pixel-wide iPhone, and replies crossing the core's rings were hard to
+   read. On a phone the clock sits to the right, beside the menu, with a
+   short date; the safe-area insets keep both clear of the notch when JARVIS
+   is opened from the home screen.
+   ------------------------------------------------------------------------ */
+.clock__date-short { display: none; }
+@media (max-width: 760px) {
+  .clock {
+    left: auto; right: 4.6rem; transform: none; text-align: right;
+    top: calc(env(safe-area-inset-top, 0px) + 0.85rem);
+  }
+  .clock__date-long { display: none; }
+  .clock__date-short { display: inline; }
+  .rail--top-left {
+    top: calc(env(safe-area-inset-top, 0px) + 1rem);
+    max-width: calc(100vw - 12.5rem);
+  }
+  .rail--top-left .rail__line { white-space: nowrap; overflow: hidden; }
+  /* Opened from the home screen, the page runs under the home bar. */
+  .command { bottom: calc(env(safe-area-inset-bottom, 0px) + 1.6rem); }
+  .conversation { bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem); }
+  /* A dark halo close around the letters, so words stay readable where
+     they cross the rings -- a shade on the text, not a box behind it. */
+  .utterance__text {
+    text-shadow: 0 0 2px rgba(4, 7, 13, 0.95), 0 0 8px rgba(4, 7, 13, 0.9),
+      0 2px 24px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Where a looked-up answer came from: one quiet line of links under it. */
+.utterance__sources {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.7rem;
+  margin-top: 0.45rem;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em;
+  pointer-events: auto;
+}
+.utterance__sources-label {
+  color: var(--ink-ghost); text-transform: uppercase; letter-spacing: 0.22em;
+}
+.utterance__sources a {
+  color: var(--accent); text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  padding: 0.2rem 0;                       /* a fingertip's worth of target */
+}
+.utterance__sources a:hover, .utterance__sources a:focus-visible {
+  border-bottom-color: var(--accent);
+}

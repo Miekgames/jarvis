@@ -135,6 +135,8 @@ trusted:
   "while I'm away for an hour, build me a habit tracker", "stop the
   research". Plain requests like these happen at once, without waiting on the
   model. The sidebar lists what JARVIS can do and something to say for each.
+  Changed your mind? "Undo that" or "change it back" puts the last setting
+  or theme you changed by asking back the way it was.
 - **Reminders and scheduled notifications:** "remind me at 7 to call Dad",
   "every weekday at 7:30 tell me to stretch", "in 20 minutes check the oven".
   The time is worked out from your words, not guessed by the model, and you
@@ -159,7 +161,12 @@ trusted:
   Act". JARVIS searches the day's news, reads several articles, and answers
   from what they say, naming each source (and saying so when sources
   disagree), instead of guessing or telling you to check a website. A short
-  follow-up ("and the over/under?") is looked up too.
+  follow-up ("and the over/under?") is looked up too. The articles it read
+  are listed under the answer as links, so you can check it.
+- **On your phone:** open JARVIS in your phone's browser (over your own
+  network or Tailscale) and add it to your home screen: it opens full screen
+  with its own icon, like an app. The layout fits a phone, with the clock
+  beside the menu and replies easy to read over the core.
 - **Skill colours:** each skill has its own colour, and the screen fades to it
   while the skill is in use: orange while researching, green for reminders.
   Ordinary replies keep the theme's own blue and violet. "Stop changing
