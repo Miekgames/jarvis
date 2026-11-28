@@ -171,7 +171,10 @@ off in Permissions says which switch turns it on.
 - **Checklists:** a grocery list, a workout, anything to tick off. "Make a
   grocery list: eggs, milk and bread", "add butter to my grocery list",
   "check off eggs", "reset my workout list". "Show me my checklists" opens
-  them: pick one and tap items to check and uncheck. Works on Discord too.
+  them: pick one and tap items to check and uncheck. Works on Discord and in
+  Discord calls too. Names don't have to match exactly: "work out" finds
+  "Workout", and "check off chest press from my workout" works even if you
+  name the list a little differently.
 - **A clean screen that remembers:** reloading or reopening JARVIS starts
   with an empty screen, but the conversation carries on, so it still knows
   what you just said. "Earlier messages" brings the history back, and
@@ -190,10 +193,13 @@ off in Permissions says which switch turns it on.
   - **Voice messages:** hold the mic in the bot's DM and ask out loud; it's
     transcribed on your PC and answered like anything typed.
   - **Calls (optional extra):** "call me on Discord" DMs you a link to a voice
-    channel; when you join, JARVIS joins and talks (it doesn't listen; it's
-    shown deafened). While you're on, what you type is answered out loud too.
-    "Hang up" ends it, and "call me for reminders" makes reminders ring this
-    way. Calls need two extra packages: run
+    channel; when you join, JARVIS joins and talks to you. Just talk back and
+    pause when you're done: your speech is transcribed on your PC and
+    answered out loud, with what it heard also sent to your DMs. Only your
+    own voice is listened to. What you type is answered out loud too. "Hang
+    up" ends it, and "call me for reminders" makes reminders ring this way.
+    If speech-to-text isn't installed, JARVIS joins deafened and you type
+    instead. Calls need two extra packages: run
     `pip install -r requirements-voice.txt` (for the download:
     `.venv\Scripts\python -m pip install -r requirements-voice.txt`), then
     restart JARVIS. The bot needs Connect and Speak in a voice channel.
@@ -226,6 +232,22 @@ off in Permissions says which switch turns it on.
   you can write or import your own.
 - **Plug-ins** via the Model Context Protocol (MCP): paste a server's config
   and its tools become JARVIS's tools.
+- **Projects with Claude Code (optional):** "build me a habit tracker app",
+  "make a Discord bot that rolls dice", "work on my snake game for an hour".
+  If you have [Claude Code](https://claude.com/claude-code) installed and
+  signed in to your own account, JARVIS hands the job to it, in a folder of
+  its own under `data/projects`. Claude Code builds, runs the tests, and
+  looks at web pages it made in a throwaway headless Edge or Chrome, at
+  desktop and phone size. Its report comes back in the chat and as a
+  notification. Questions stay with your usual AI; only asking for something
+  to be made starts a project. It may edit files and run development commands
+  in the project folder, but pushing code, deleting folders and shutting down
+  are refused. If Claude Code isn't installed, isn't signed in, or you've hit
+  its usage limit, JARVIS says so (with when the limit resets) and the
+  "While away" builder below takes the job instead. "Send me the habit
+  tracker on Discord" sends a zip and screenshots to your DMs, or add "and
+  send it to my Discord" when you ask. Needs the "Hand coding projects to
+  Claude Code" permission, which is off until you turn it on.
 - **While away:** give JARVIS a goal and a time span (30 minutes to a day).
   It can build a small web app, test it the way a person would, fix what it
   finds, and report honestly what works and what doesn't.

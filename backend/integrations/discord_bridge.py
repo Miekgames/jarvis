@@ -400,6 +400,35 @@ class DiscordBridge:
                            {"seconds": round(float((result or {}).get("duration") or 0), 1)})
         return words
 
+    async def send_files(self, paths: List[Any], text: str = "") -> str:
+        """Files to the owner's DMs (a finished project, a screenshot). Returns what happened."""
+        import discord
+
+        client = self.client
+        config = await self.config()
+        if client is None or client.is_closed():
+            raise RuntimeError("The Discord bot isn't connected.")
+        if not config["owners"]:
+            raise RuntimeError("Pair your Discord account first: say “pair Discord”.")
+        if not self.allowed():
+            raise RuntimeError("Discord is switched off in JARVIS's permissions.")
+        from ..autonomy.packing import UPLOAD_LIMIT
+
+        sendable = [p for p in paths if p.exists() and p.stat().st_size <= UPLOAD_LIMIT]
+        too_big = [p for p in paths if p.exists() and p.stat().st_size > UPLOAD_LIMIT]
+        if not sendable:
+            raise RuntimeError("That's too big to send through Discord (about 10 MB at most)."
+                               if too_big else "There's nothing to send.")
+        owner = int(config["owners"][0]["id"])
+        user = client.get_user(owner) or await client.fetch_user(owner)
+        dm = user.dm_channel or await user.create_dm()
+        await dm.send(content=(text or None) and text[:1900],
+                      files=[discord.File(str(p), filename=p.name) for p in sendable[:10]])
+        await self._record("discord.files_sent", f"Sent {len(sendable)} file(s) to Discord",
+                           {"files": [p.name for p in sendable]})
+        note = f" ({', '.join(p.name for p in too_big)} too big for Discord)" if too_big else ""
+        return f"Sent {', '.join(p.name for p in sendable)} to your Discord DMs.{note}"
+
     async def slash_help(self, interaction, topic: str = "") -> None:
         """The /help slash command: only the owner sees it, even in a server."""
         config = await self.config()

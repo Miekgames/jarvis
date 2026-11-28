@@ -23,6 +23,8 @@ _SAID = [
                              r"\s+(?:to|on|through)\s+(?:my\s+)?discord(?:\s+too)?")),
     ("notify_off", re.compile(r"(?:stop|don'?t|do\s+not)\s+(?:sending|send|forwarding)\s+(?:me\s+)?(?:my\s+)?"
                               r"(?:notifications|reminders|alerts)\s+(?:to|on|through)\s+(?:my\s+)?discord")),
+    ("send_files", re.compile(r"(?:send|share)\s+(?:me\s+)?(?P<what>.+?)\s+(?:to|on|through|over|in)\s+"
+                              r"(?:my\s+)?discord(?:\s+dms?)?")),
     ("servers_on", re.compile(r"(?:answer|reply\s+to)\s+me\s+in\s+(?:discord\s+)?servers(?:\s+too)?")),
     ("servers_off", re.compile(r"(?:only|just)\s+(?:answer|reply)(?:\s+to)?\s+(?:me\s+)?in\s+(?:discord\s+)?"
                                r"(?:dms|direct\s+messages)|stop\s+answering\s+in\s+(?:discord\s+)?servers")),
@@ -82,6 +84,11 @@ def discord_said(message: str) -> Optional[Tuple[str, Dict[str, Any]]]:
                 return "discord_unpair", {}
             if action in ("notify_on", "notify_off"):
                 return "discord_notify", {"on": action == "notify_on"}
+            if action == "send_files":
+                what = pattern.fullmatch(said).group("what")
+                if re.fullmatch(r"(?:my\s+)?(?:notifications?|reminders?|alerts?)(?:\s+too)?", what):
+                    return "discord_notify", {"on": True}
+                return "discord_send_project", {"what": what}
             return "discord_servers", {"on": action == "servers_on"}
     return None
 
@@ -233,6 +240,37 @@ def register(registry: ToolRegistry) -> None:
         return ok({"call_reminders": bool(on)},
                   "When a reminder goes off I'll call you on Discord: a DM to join voice, then I'll "
                   "say it." if on else "Reminders won't call you on Discord any more.")
+
+    @registry.add(
+        "discord_send_project",
+        "Send a project JARVIS built (a zip of its files, and screenshots) to the owner's Discord "
+        "DMs: 'send me the tip calculator on Discord', 'send it to my Discord'.",
+        {"type": "object", "properties": {
+            "what": {"type": "string", "description": "Which project, in the owner's words ('it' for the latest)"},
+        }},
+        permission="discord.chat",
+        category="discord send file files project zip share",
+    )
+    async def discord_send_project(ctx, what: str = ""):
+        from pathlib import Path
+
+        from ...autonomy.packing import find_project, pack, screenshots
+
+        bridge = ctx.get("discord")
+        if bridge is None:
+            return fail("The Discord service isn't available.")
+        settings = ctx.get("settings")
+        workspace = Path(getattr(settings, "DATA_DIR", ".")) / "projects"
+        folder = find_project(workspace, what)
+        if folder is None:
+            return fail(f"I couldn't find a project matching “{what}”." if what else
+                        "There aren't any projects to send yet.")
+        try:
+            files = [pack(folder, Path(getattr(settings, "DATA_DIR", ".")) / "outbox")] + screenshots(folder)
+            said = await bridge.send_files(files, f"📦 **{folder.name}**")
+        except RuntimeError as exc:
+            return fail(str(exc))
+        return ok({"folder": str(folder)}, said)
 
     @registry.add(
         "discord_servers",

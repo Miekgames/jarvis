@@ -263,6 +263,22 @@ class VoiceService:
         bus.publish(Events.SPEAKING_START,
                     {"text": truncate(text, 400), "source": "browser"}, source="voice")
 
+    def speaking_elsewhere(self, text: str) -> None:
+        """JARVIS is talking somewhere else this PC may hear -- a Discord call.
+
+        Sets what the wake-word detector checks, so JARVIS saying "Hi, it's
+        JARVIS" in a call isn't heard back through the speakers as the wake
+        word (it did that once, and answered its own greeting). Nothing is
+        broadcast: the screen isn't the one speaking.
+        """
+        self._speaking = True
+        self.speaking_text = text or ""
+
+    def done_speaking_elsewhere(self) -> None:
+        self._speaking = False
+        self.speaking_ended_at = time.time()       # the echo guard counts from here
+        self.speaking_text = ""
+
     def speaking_ended(self, interrupted: bool = False) -> None:
         self._speaking = False
         self.speaking_ended_at = time.time()

@@ -378,7 +378,7 @@ def task_label(task: Dict[str, Any]) -> str:
     params = task.get("params") or {}
     if isinstance(params, str):
         params = {}
-    topic = params.get("question") or params.get("topic") or ""
+    topic = params.get("question") or params.get("topic") or params.get("task") or ""
     kind = str(task.get("type") or task.get("name") or "task").replace("_", " ")
     return f"{kind}: {topic}" if topic else str(task.get("name") or kind)
 

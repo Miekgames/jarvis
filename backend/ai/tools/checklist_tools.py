@@ -182,10 +182,15 @@ def register(registry: ToolRegistry) -> None:
             return fail("Checklists aren't available.")
         if checklist:
             chosen, why = await _which(service, checklist)
-            if chosen is None:
-                return fail(why)
-            found = service.find_item(chosen, item)
-            matches = [{"checklist": chosen, "item": found}] if found else []
+            if chosen is not None:
+                found = service.find_item(chosen, item)
+                matches = [{"checklist": chosen, "item": found}] if found else []
+            else:
+                # The list's name didn't match, but the item may say which
+                # list was meant: if it's on exactly one, that's the one.
+                matches = await service.find_item_anywhere(item)
+                if len(matches) != 1:
+                    return fail(why)
         else:
             matches = await service.find_item_anywhere(item)
         if not matches:

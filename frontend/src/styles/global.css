@@ -3133,3 +3133,12 @@ a { color: var(--accent); }
 .checklist__add { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
 .checklist__add .text-input { flex: 1; min-width: 0; }
 .checklist__actions { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; }
+
+/* iPhones zoom the page into any text box smaller than 16px, and stay zoomed.
+   At 16px on touch screens they don't, and pinch-to-zoom still works. */
+@media (max-width: 760px), (pointer: coarse) {
+  .command__input, .text-input, .select, textarea, input[type="text"],
+  input[type="search"], input[type="email"], input[type="password"], input:not([type]) {
+    font-size: 16px;
+  }
+}

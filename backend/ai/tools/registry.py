@@ -284,7 +284,7 @@ class ToolRegistry:
             wanted += ["schedule_notification", "list_reminders", "cancel_reminder"]
         if _RESEARCH.search(query or ""):
             wanted.append("deep_research")
-        if re.search(r"\b(?:stop|cancel|abort)\b.*\b(?:research\w*|task|job)\b", query or "", re.I):
+        if re.search(r"\b(?:stop|cancel|abort)\b.*\b(?:research\w*|task|job|project|build)\b", query or "", re.I):
             wanted.append("stop_task")
 
         # "How many days until..." is nearly all scaffolding words.
@@ -600,7 +600,7 @@ _SETTING = re.compile(r"\b(?:turn|switch)\s+(?:on|off)\b|\b(?:turn|switch)\s+.+\
 _AWAY = re.compile(r"\bwhile\s+i(?:'m|\s+am)\s+(?:away|out|gone)\b|\bi'?m\s+(?:going\s+out|heading\s+out|leaving)\b|"
                    r"\baway\s+work\b|\bwhen\s+i(?:'m|\s+am)\s+(?:away|out)\b", re.I)
 _OPEN = re.compile(r"^\s*(?:please\s+)?(?:open|show(?:\s+me)?|go\s+to|bring\s+up|pull\s+up|"
-                   r"take\s+me\s+to|close)", re.I)
+                   r"take\s+me\s+to|close)\b", re.I)
 _REMIND = re.compile(r"\b(?:remind(?:er|ers)?|notify\s+me|alert\s+me|ping\s+me|"
                      r"schedule\s+a\s+notification|notifications?\s+(?:at|every|in))\b", re.I)
 _RESEARCH = re.compile(r"\b(?:research|dig\s+(?:in|into)|look\s+into|investigate|"

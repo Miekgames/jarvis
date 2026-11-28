@@ -52,8 +52,10 @@ def _emoji_rule(personality: Dict[str, Any]) -> str:
     """Emojis where they add meaning ("use emojis" / "stop using emojis")."""
     if personality.get("emojis", True) is False:
         return "- Don't use emojis."
-    return ("- Use an emoji now and then where it adds meaning or warmth (✅ done, 🛒 groceries, "
-            "📅 a date, ⚠️ a warning): one or two in a reply at most, never in code or file paths.")
+    # No example emojis: a small model copied them into replies whether they
+    # fitted or not ("Call me on Di 🛒").
+    return ("- You may use one emoji in a reply when it really fits what you're saying. Most "
+            "replies need none. Never in code or file paths.")
 
 
 async def build_compact_prompt(

@@ -5,11 +5,12 @@ DMs the owner a link to a voice channel it can speak in, waits for them to
 join (any voice channel the bot shares with them), joins them there and
 speaks -- in JARVIS's own voice, the same edge-tts voice as the screen.
 
-While the call is on, whatever the owner types to the bot is answered in
-text and read out loud in the call. The bot joins deafened, which is the
-truth: it doesn't listen. It leaves when the owner leaves, when told to
-"hang up", or after an hour; a call nobody joins ends after five minutes
-with a "missed call" DM.
+While the call is on, JARVIS listens (see discord_listen): what the owner
+says is heard, answered out loud, and kept in the DMs; anything typed to the
+bot is answered out loud too. Only the owner's voice can be heard -- Discord's
+end-to-end encryption is opened as the owner. It leaves when the owner
+leaves, when told to "hang up", or after an hour; a call nobody joins ends
+after five minutes with a "missed call" DM.
 
 No FFmpeg: edge-tts gives MP3, and PyAV (already here for speech
 recognition) turns it into the 48 kHz stereo PCM Discord's voice wants.
@@ -102,6 +103,7 @@ class VoiceCalls:
         self.voice = None                          # discord.VoiceClient while on a call
         self._timer: Optional[asyncio.Task] = None
         self._speaking = asyncio.Lock()            # one thing said at a time
+        self.listener = None                       # hearing the owner, while on a call
 
     @property
     def active(self) -> bool:
@@ -109,6 +111,7 @@ class VoiceCalls:
 
     def status(self) -> Dict[str, Any]:
         return {"in_call": self.active, "call_pending": self.pending is not None,
+                "listening": self.active and self.listener is not None,
                 "call_channel": getattr(getattr(self.voice, "channel", None), "name", "") if self.active else ""}
 
     # -- starting -------------------------------------------------------------------
@@ -189,21 +192,72 @@ class VoiceCalls:
 
     async def _join(self, channel) -> None:
         pending, self.pending = self.pending, None
+        listen = self.tts is not None and hasattr(self.tts, "transcribe_samples")
         try:
-            # Deafened: it doesn't listen, and Discord shows exactly that.
-            self.voice = await channel.connect(self_deaf=True)
+            # Not deafened when it listens: Discord only sends audio to members
+            # who can hear, and shows exactly which it is.
+            self.voice = await channel.connect(self_deaf=not listen)
         except Exception as exc:
             logger.warning("couldn't join %s: %s", channel, exc)
             await self._dm(f"I couldn't join {channel.name}: {type(exc).__name__}.")
             return
         self._restart_timer(CALL_MAX_S, lambda: self.hang_up("The call reached an hour, so I hung up."))
-        message = (pending or {}).get("say") or ("Type to me in our messages and I'll answer out "
-                                                 "loud here. Leave the channel when you're done.")
         await asyncio.sleep(SETTLE_S)               # let the connection settle before talking
         if not await self._secure():
             await self._dm("I'm in the voice channel, but Discord's voice encryption hasn't finished "
                            "setting up, so you may not hear me yet. I'll keep trying when I speak.")
-        await self.speak(f"Hi, it's JARVIS. {message}")
+        if listen:
+            self._listen((pending or {}).get("owner"))
+        hint = ("Just talk, and pause when you're done. Say hang up to end the call." if self.listener
+                else "Type to me in our messages and I'll answer out loud here. Leave the channel "
+                     "when you're done.")
+        said = (pending or {}).get("say")
+        await self.speak(f"Hi, it's JARVIS. {said + ' ' if said else ''}{hint}")
+
+    def _listen(self, owner_id: Optional[int]) -> None:
+        """Hear the owner in the call: their sentences go to JARVIS like typed ones."""
+        from .discord_listen import CallListener
+
+        if owner_id is None or self.voice is None:
+            return
+        try:
+            self.listener = CallListener(self.voice, owner_id, self.tts.transcribe_samples, self._heard,
+                                         loop=asyncio.get_running_loop())
+            self.listener.start()
+        except Exception as exc:
+            logger.warning("couldn't listen in the call: %s", exc)
+            self.listener = None
+
+    async def _heard(self, words: str) -> None:
+        """Something the owner said in the call: answered out loud, and kept in the DMs."""
+        bridge = self.bridge
+        if not bridge.allowed() or bridge.orchestrator is None:
+            return
+        await bridge._record("discord.call_heard", "Heard the owner in the Discord call",
+                             {"chars": len(words)})
+        owners = (await bridge.config())["owners"]
+        client = bridge.client
+        dm = None
+        try:
+            user = client.get_user(int(owners[0]["id"])) or await client.fetch_user(int(owners[0]["id"]))
+            dm = user.dm_channel or await user.create_dm()
+        except Exception:
+            logger.debug("no DM channel for the call's record", exc_info=True)
+        conversation = await bridge._conversation(dm.id, await bridge.config()) if dm is not None else None
+        reply = ""
+        async for event in bridge.orchestrator.chat(words, conversation_id=conversation,
+                                                    source="discord-call"):
+            if event.get("type") == "final":
+                reply = event.get("text") or reply
+            elif event.get("type") == "error":
+                reply = f"Sorry, I couldn't do that: {event.get('error')}"
+        if self.active and reply:
+            await self.speak(reply)
+        if dm is not None:
+            from .discord_bridge import chunks
+
+            for part in chunks(f"🎙️ *“{words}”*\n\n{reply or '(no answer)'}"):
+                await dm.send(part)
 
     async def _secure(self, timeout: float = SECURE_WAIT_S) -> bool:
         """Wait until audio can be sent so it's heard: no E2EE, or E2EE ready."""
@@ -238,6 +292,12 @@ class VoiceCalls:
             if not self.active or not await self._secure(5.0):
                 return False
             finished = asyncio.Event()
+            # This PC's own wake word may hear the call through the speakers:
+            # tell it JARVIS is the one talking (it once answered itself).
+            if hasattr(self.tts, "speaking_elsewhere"):
+                self.tts.speaking_elsewhere(clean)
+            if self.listener is not None:
+                self.listener.paused = True            # not while JARVIS itself is talking
             self.voice.play(discord.PCMAudio(io.BytesIO(pcm)),
                             after=lambda error: loop.call_soon_threadsafe(finished.set))
             seconds = len(pcm) / (48000 * 2 * 2)
@@ -245,6 +305,11 @@ class VoiceCalls:
                 await asyncio.wait_for(finished.wait(), timeout=seconds + 15)
             except asyncio.TimeoutError:
                 logger.warning("the call's audio didn't finish playing")
+            finally:
+                if hasattr(self.tts, "done_speaking_elsewhere"):
+                    self.tts.done_speaking_elsewhere()
+                if self.listener is not None:
+                    self.listener.paused = False
             logger.info("said %.1f s in the call; encryption %s, stats %s",
                         seconds, encryption_state(self.voice), self._encryption_stats())
             return True
@@ -268,6 +333,9 @@ class VoiceCalls:
         if self._timer is not None:
             self._timer.cancel()
             self._timer = None
+        listener, self.listener = self.listener, None
+        if listener is not None:
+            listener.stop()
         voice, self.voice = self.voice, None
         if voice is not None:
             try:

@@ -13,6 +13,7 @@ def build_registry(services: Dict[str, Any]) -> ToolRegistry:
         autonomy_tools,
         business_tools,
         checklist_tools,
+        project_tools,
         countdown_tools,
         discord_tools,
         reminder_tools,
@@ -39,6 +40,6 @@ def build_registry(services: Dict[str, Any]) -> ToolRegistry:
                    integration_tools, intelligence_tools, os_tools, selfedit_tools,
                    workspace_tools, business_tools, autonomy_tools, skill_tools,
                    document_tools, email_tools, countdown_tools, reminder_tools, ui_tools, control_tools, everyday_tools,
-                   discord_tools, checklist_tools):
+                   discord_tools, checklist_tools, project_tools):
         module.register(registry)
     return registry

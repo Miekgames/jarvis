@@ -72,6 +72,11 @@ REGISTRY: List[PermissionDef] = [
                   "Let JARVIS read and rewrite its own source using a dedicated code model. "
                   "Every change is diffed, syntax-checked, confirmed and backed up first.",
                   Risk.CRITICAL, False),
+    PermissionDef("code.delegate", "Hand coding projects to Claude Code",
+                  "Big jobs (\"build me an app\") go to Claude Code, which edits files and runs "
+                  "development commands in the project's own folder, unattended. Pushing code "
+                  "anywhere is never allowed.",
+                  Risk.HIGH, False),
 
     # -- web -----------------------------------------------------------------
     PermissionDef("web.search", "Search the web", "Run web searches and read result snippets.", Risk.LOW, True),

@@ -99,7 +99,7 @@ _RESEARCH_SAID = re.compile(
 _STOP_SAID = re.compile(
     r"(?:please\s+)?(?:stop|cancel|abort|kill|end)\s+"
     r"(?:the\s+|that\s+|this\s+|my\s+)?(research(?:ing)?(?:\s+(?:on|into|about)\s+.+)?|task|"
-    r"background\s+task|job|.+?\s+research)")
+    r"background\s+task|job|project|build|coding(?:\s+(?:job|project))?|.+?\s+research|.+?\s+project)")
 
 
 def stop_said(message: str) -> Optional[str]:
@@ -624,6 +624,8 @@ class Orchestrator:
             done = await self._plain_discord(message, conversation_id)
         if done is None:
             done = await self._plain_checklist(message, conversation_id)
+        if done is None:
+            done = await self._plain_project(message, conversation_id)
         if done is not None:
             await self._save_message(conversation_id, "assistant", done,
                                      [{"type": "text", "text": done}])
@@ -1267,6 +1269,21 @@ class Orchestrator:
         tool, arguments = found
         result = await self.registry.dispatch(tool, arguments, conversation_id=conversation_id)
         return result.message or ("Done." if result.ok else "That couldn't be done.")
+
+    async def _plain_project(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
+        """"Build me a habit tracker app": a project for Claude Code, started at once.
+
+        Everyday questions -- including ones about code -- never come here;
+        only asking for something to be made does.
+        """
+        from .tools.project_tools import project_said
+
+        found = project_said(message)
+        if found is None or self.registry is None or self.registry.get(found[0]) is None:
+            return None
+        tool, arguments = found
+        result = await self.registry.dispatch(tool, arguments, conversation_id=conversation_id)
+        return result.message or ("Done." if result.ok else "That couldn't be started.")
 
     async def _plain_discord(self, message: str, conversation_id: Optional[str] = None) -> Optional[str]:
         """"Pair Discord", "turn off Discord": done at once, through the tool runner."""

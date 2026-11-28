@@ -194,3 +194,29 @@ async def test_the_thread_still_going_carries_on(db):
     await _conversation(db, "now", (utcnow() - timedelta(minutes=5)).isoformat())
     await _conversation(db, "discord", utcnow().isoformat())
     assert await orchestrator.recent_conversation(exclude=["discord"]) == "now"
+
+
+# -- forgiving names: "check off chest press from my work out checklist" ------
+async def test_spacing_and_near_spellings_still_find_the_list(fake, lists):
+    await fake.say("make a workout checklist: chest press, squats, plank")
+    await fake.say("make a grocery list: eggs, milk")
+    said = await fake.say("check off chest press from my work out checklist")
+    assert said.startswith("Checked off chest press."), said
+    assert (await fake.say("check off plank on my work-out list")).startswith("Checked off plank")
+    assert "Grocery list" in await fake.say("what's on my grocerys list?")
+
+
+async def test_an_unknown_list_name_falls_back_to_where_the_item_is(fake):
+    await fake.say("make a workout checklist: chest press, squats")
+    await fake.say("make a grocery list: eggs, milk")
+    said = await fake.say("check off squats on my gym list")
+    assert said.startswith("Checked off squats."), "squats is only on Workout"
+    assert "There's no checklist called “gym”" in await fake.say("check off bread on my gym list")
+
+
+async def test_two_close_lists_are_asked_about_not_guessed(fake):
+    await fake.say("make a workout checklist: chest press")
+    await fake.say("make a workout plan checklist: squats")
+    assert await fake.say("what's on my work list?") is not None
+    said = await fake.say("check off chest press")
+    assert said.startswith("Checked off chest press.")

@@ -20,6 +20,7 @@ OWNER = 42
 
 class DM:
     def __init__(self):
+        self.id = 900
         self.sent = []
 
     async def send(self, text):
@@ -33,6 +34,12 @@ class Voice:
         self.channel = channel
         self.connected = True
         self.played = 0
+        self.listeners = []
+        self.mode = "aead_xchacha20_poly1305_rtpsize"
+        self.secret_key = list(range(32))
+        self._connection = SimpleNamespace(add_socket_listener=self.listeners.append,
+                                           remove_socket_listener=self.listeners.remove,
+                                           dave_protocol_version=0, dave_session=None)
 
     def is_connected(self):
         return self.connected
@@ -57,14 +64,23 @@ class VoiceChannel:
         return SimpleNamespace(view_channel=True, connect=True, speak=True)
 
     async def connect(self, self_deaf=False):
-        assert self_deaf, "it doesn't listen, and says so"
         self.joined = Voice(self)
+        self.joined.deafened = self_deaf
         return self.joined
 
 
 class TTS:
     def __init__(self):
         self.said = []
+        self.speaking = False
+        self.heard_while_speaking = []
+
+    def speaking_elsewhere(self, text):
+        self.speaking = True
+        self.heard_while_speaking.append(text)
+
+    def done_speaking_elsewhere(self):
+        self.speaking = False
 
     async def synthesise(self, text, voice=None, rate=1.0):
         self.said.append(text)
@@ -83,7 +99,7 @@ def _quick(monkeypatch):
 async def bridge(settings_store):
     tts = TTS()
     made = DiscordBridge(settings_store, orchestrator=None, voice=tts)
-    guild = SimpleNamespace(id=7, name="Test Server", me=object(), voice_channels=[])
+    guild = SimpleNamespace(id=7, name="Game Night", me=object(), voice_channels=[])
 
     async def fetch_member(uid):
         if uid != OWNER:
@@ -107,7 +123,7 @@ def _state(channel=None):
 
 async def test_a_call_dms_a_link_then_speaks_when_you_join(bridge):
     said = await bridge.calls.call(say="The oven's done.")
-    assert "sent you a DM" in said and "General in Test Server" in said
+    assert "sent you a DM" in said and "General in Game Night" in said
     dm = bridge.test.dm.sent[0]
     assert "JARVIS is calling" in dm and "https://discord.com/channels/7/500" in dm
     assert bridge.calls.status()["call_pending"]
@@ -115,7 +131,7 @@ async def test_a_call_dms_a_link_then_speaks_when_you_join(bridge):
     member = SimpleNamespace(id=OWNER)
     await bridge.calls.on_voice_state(member, _state(None), _state(bridge.test.channel))
     assert bridge.calls.active and bridge.test.channel.joined is not None
-    assert bridge.test.tts.said == ["Hi, it's JARVIS. The oven's done."]
+    assert bridge.test.tts.said[0].startswith("Hi, it's JARVIS. The oven's done. ")
     assert bridge.test.channel.joined.played == 1
     await bridge.calls.hang_up()
 
@@ -220,3 +236,57 @@ async def test_without_the_voice_extra_it_says_how_to_add_it(bridge, monkeypatch
     with pytest.raises(RuntimeError, match="requirements-voice.txt"):
         await bridge.calls.call()
     assert bridge.test.dm.sent == [], "no DM for a call that can't happen"
+
+
+async def test_the_wake_word_is_told_jarvis_is_talking_in_the_call(bridge):
+    """Through the PC's speakers, "Hi, it's JARVIS" set off the wake word and
+    JARVIS answered its own greeting."""
+    await bridge.calls.call(say="Hello.")
+    await bridge.calls.on_voice_state(SimpleNamespace(id=OWNER), _state(None), _state(bridge.test.channel))
+    assert bridge.test.tts.heard_while_speaking[0].startswith("Hi, it's JARVIS. Hello.")
+    assert bridge.test.tts.speaking is False, "and it knows when the call went quiet"
+    await bridge.calls.hang_up()
+
+
+
+class Hearing(TTS):
+    async def transcribe_samples(self, samples):
+        return "check off eggs"
+
+
+class Chat:
+    def __init__(self):
+        self.asked = []
+
+    async def ensure_conversation(self, conversation_id=None):
+        return conversation_id or "conv_dm"
+
+    async def chat(self, text, conversation_id=None, source="text"):
+        self.asked.append((text, source))
+        yield {"type": "final", "text": "Checked off eggs. 2 left on **Grocery list**."}
+
+
+async def test_talking_in_the_call_is_heard_answered_and_kept(bridge):
+    bridge.calls.tts = hearing = Hearing()
+    bridge.orchestrator = Chat()
+    await bridge.calls.call()
+    await bridge.calls.on_voice_state(SimpleNamespace(id=OWNER), _state(None), _state(bridge.test.channel))
+    voice = bridge.test.channel.joined
+    assert voice.deafened is False, "listening, so not deafened"
+    assert bridge.calls.listener is not None and voice.listeners, "the call's audio comes to the listener"
+    assert "Just talk" in hearing.said[0]
+
+    await bridge.calls._heard("check off eggs")
+    assert bridge.orchestrator.asked == [("check off eggs", "discord-call")]
+    assert hearing.said[-1] == "Checked off eggs. 2 left on Grocery list."
+    assert any("check off eggs" in m and "Checked off eggs" in m for m in bridge.test.dm.sent)
+
+    await bridge.calls.hang_up()
+    assert bridge.calls.listener is None and voice.listeners == [], "stops listening when the call ends"
+
+
+async def test_without_speech_recognition_it_joins_deafened(bridge):
+    await bridge.calls.call()
+    await bridge.calls.on_voice_state(SimpleNamespace(id=OWNER), _state(None), _state(bridge.test.channel))
+    assert bridge.test.channel.joined.deafened is True and bridge.calls.listener is None
+    await bridge.calls.hang_up()

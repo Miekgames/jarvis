@@ -49,6 +49,15 @@ SECTIONS: Tuple[Section, ...] = (
         Line('quick research on tide times', 'a few minutes, a short answer', 'quick_research'),
         Line('stop the research', 'stops it', 'stop_task'),
     )),
+    Section('projects', 'Projects: apps, sites, games and code',
+            ('project', 'projects', 'build', 'coding', 'claude code', 'code projects'),
+            'big coding jobs handed to Claude Code, which builds, tests and reports back', (
+        Line('build me a habit tracker app', 'Claude Code builds it in its own folder and reports back', 'start_project'),
+        Line("while I'm away for two hours, build me a budgeting website",
+             'keeps testing and improving until the time is used', 'start_project'),
+        Line('work on my snake game for an hour', 'carries on with a project', 'start_project'),
+        Line('stop the project', 'stops it', 'stop_task'),
+    )),
     Section('reminders', 'Reminders and timers', ('reminder', 'reminders', 'remind', 'timer', 'timers', 'alarm'),
             'one-off and repeating reminders, timers', (
         Line('remind me at 7 to call Dad', 'a reminder, also as a Windows notification', 'schedule_notification'),
@@ -155,6 +164,7 @@ SECTIONS: Tuple[Section, ...] = (
         Line('turn off Discord', 'stops the bot', 'discord_switch'),
         Line('unpair Discord', 'nobody can use it until you pair again', 'discord_unpair'),
         Line('call me on Discord', 'DMs you to join voice, then talks to you there', 'discord_call'),
+        Line('send me the tip calculator on Discord', "a project's files and screenshots, to your DMs", 'discord_send_project'),
         Line('hang up', 'ends the call', 'discord_hang_up'),
         Line('call me for reminders', 'reminders ring as a Discord call', 'discord_call_reminders'),
     )),

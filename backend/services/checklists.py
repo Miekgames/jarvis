@@ -12,7 +12,8 @@ is a separate, deliberate tidy.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional
+from difflib import SequenceMatcher
+from typing import Any, Callable, Dict, List, Optional
 
 from ..core.events import bus
 from ..core.util import new_id, now_iso
@@ -62,6 +63,39 @@ def _key(words: str) -> str:
     return " ".join(out)
 
 
+def _squash(key: str) -> str:
+    """ "work out" and "workout" are the same list: spacing doesn't count."""
+    return key.replace(" ", "")
+
+
+def _best(things: List[Dict[str, Any]], wanted: str, name: Callable[[Dict[str, Any]], str],
+          partial_both_ways: bool = False) -> Optional[Dict[str, Any]]:
+    """The one thing the words mean, most certain match first, else None.
+
+    "work out" didn't find "Workout" when matching went word for word; then
+    "chest press" vs "chest-press", "grocerys" vs "groceries". In order:
+    the same words; the same letters ignoring spaces and hyphens; one
+    contained in the other; a near spelling -- each only when one thing fits.
+    """
+    keyed = [(thing, _key(name(thing))) for thing in things]
+    tests = [
+        lambda key: key == wanted,
+        lambda key: _squash(key) == _squash(wanted),
+        lambda key: _squash(wanted) in _squash(key) or (partial_both_ways and _squash(key) in _squash(wanted)),
+    ]
+    for test in tests:
+        hits = [thing for thing, key in keyed if key and test(key)]
+        if len(hits) == 1 or (hits and test is tests[0]):
+            return hits[0]
+        if len(hits) > 1:
+            return None                                   # more than one fits: ask, don't guess
+    scored = sorted(((SequenceMatcher(None, _squash(wanted), _squash(key)).ratio(), i)
+                     for i, (thing, key) in enumerate(keyed) if key), reverse=True)
+    if scored and scored[0][0] >= 0.8 and (len(scored) == 1 or scored[0][0] - scored[1][0] >= 0.1):
+        return keyed[scored[0][1]][0]
+    return None
+
+
 class Checklists:
     def __init__(self, db) -> None:
         self.db = db
@@ -94,23 +128,14 @@ class Checklists:
             return None
         if not wanted:
             return lists[0] if len(lists) == 1 else None
-        exact = [c for c in lists if _key(c["title"]) == wanted]
-        if exact:
-            return exact[0]
-        partial = [c for c in lists if wanted in _key(c["title"]) or _key(c["title"]) in wanted]
-        return partial[0] if len(partial) == 1 else None
+        return _best(lists, wanted, lambda c: c["title"], partial_both_ways=True)
 
     @staticmethod
     def find_item(checklist: Dict[str, Any], words: str) -> Optional[Dict[str, Any]]:
         wanted = _key(words)
         if not wanted:
             return None
-        items = checklist["items"]
-        exact = [i for i in items if _key(i["text"]) == wanted]
-        if exact:
-            return exact[0]
-        partial = [i for i in items if wanted in _key(i["text"])]
-        return partial[0] if len(partial) == 1 else None
+        return _best(checklist["items"], wanted, lambda i: i["text"])
 
     async def find_item_anywhere(self, words: str) -> List[Dict[str, Any]]:
         """Every (checklist, item) whose item the words name, across all lists."""

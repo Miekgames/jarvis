@@ -172,5 +172,7 @@ def test_emojis_by_saying_it(said, value):
 def test_the_prompt_follows_the_emoji_setting():
     from backend.ai.prompt import _emoji_rule
 
-    assert "emoji now and then" in _emoji_rule({})
+    rule = _emoji_rule({})
+    assert "one emoji" in rule
+    assert not any(ch in rule for ch in "✅🛒📅⚠"), "no examples for a small model to copy"
     assert _emoji_rule({"emojis": False}) == "- Don't use emojis."

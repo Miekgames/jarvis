@@ -24,4 +24,4 @@ import os
 # everything, including `python -m backend`.
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
